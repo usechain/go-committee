@@ -114,10 +114,10 @@ func ScanIdentityAccount(usechain *config.Usechain, priv *ecdsa.PrivateKey, node
 	}
 
 	unconfirmedCount, _ := big.NewInt(0).SetString(res[2:], 16)
-	log.Debug("unconfirmedcount", "count", unconfirmedCount)
+	//log.Debug("unconfirmedcount", "count", unconfirmedCount)
 	for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 		// get unconfirmed address index
-		res, err := idctr.ContractCallParsed(rpc, coinbase,"unConfirmedAddress", big.NewInt(35))
+		res, err := idctr.ContractCallParsed(rpc, coinbase,"unConfirmedAddress", big.NewInt(i))
 		if err != nil {
 			log.Error("read unconfirmed address failed",  "err", err)
 			return
@@ -132,7 +132,6 @@ func ScanIdentityAccount(usechain *config.Usechain, priv *ecdsa.PrivateKey, node
 			continue
 		}
 
-		log.Debug("Check a new account verifying")
 		// get address based on cert id as index
 		res, err = idctr.ContractCallParsed(rpc, coinbase,"CertToAddress", certID)
 		if err != nil {
@@ -144,7 +143,7 @@ func ScanIdentityAccount(usechain *config.Usechain, priv *ecdsa.PrivateKey, node
 			log.Error("It's not ok for", "type", reflect.TypeOf(res[1]))
 			return
 		}
-		//fmt.Println("addr", value)
+		log.Debug("get a new account verifying", "address", value)
 
 		// get address detail info based on address as index
 		res, err = idctr.ContractCallParsed(rpc, coinbase,"CertificateAddr", value)

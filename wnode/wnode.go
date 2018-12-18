@@ -63,7 +63,7 @@ var (
 	profile	   *config.NodeConfig
 
 	input = bufio.NewReader(os.Stdin)
-	ChanWhiper = make(chan []byte, whisperChanSize)
+	ChanWhisper = make(chan []byte, whisperChanSize)
 )
 
 // encryption
@@ -87,14 +87,14 @@ var (
 	forwarderMode  = flag.Bool("forwarder", false, "forwarder mode: only forward messages, neither encrypt nor decrypt messages")
 	mailServerMode = flag.Bool("mailserver", false, "mail server mode: delivers expired messages on demand")
 	requestMail    = flag.Bool("mailclient", false, "request expired messages from the bootstrap server")
-	asymmetricMode = flag.Bool("asym", false, "use asymmetric encryption")
+	asymmetricMode = flag.Bool("asym", true, "use asymmetric encryption")
 	generateKey    = flag.Bool("generatekey", false, "generate and show the private key")
 	fileExMode     = flag.Bool("fileexchange", false, "file exchange mode")
 	fileReader     = flag.Bool("filereader", false, "load and decrypt messages saved as files, display as plain text")
 	testMode       = flag.Bool("test", false, "use of predefined parameters for diagnostics (password, etc.)")
 	echoMode       = flag.Bool("echo", false, "echo mode: prints some arguments for diagnostics")
 
-	argVerbosity = flag.Int("verbosity", int(log.LvlError), "log verbosity level")
+	argVerbosity = flag.Int("verbosity", int(log.LvlDebug), "log verbosity level")
 	argTTL       = flag.Uint("ttl", 30, "time-to-live for messages in seconds")
 	argWorkTime  = flag.Uint("work", 5, "work time in seconds")
 	argMaxSize   = flag.Uint("maxsize", uint(whisper.DefaultMaxMessageSize), "max size of message")
@@ -120,6 +120,7 @@ func Wnode() {
 
 func processArgs() {
 	flag.Parse()
+	log.Root().SetHandler(log.LvlFilterHandler(log.Lvl(*argVerbosity), log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
 
 	var err error
 	profile, err = config.ReadWhisperNode()
@@ -495,6 +496,7 @@ func run() {
 		go messageLoop()
 	}
 
+
 	select {}
 
 	//if *requestMail {
@@ -703,7 +705,7 @@ func messageLoop() {
 				reportedOnce := false
 				if !*fileExMode && len(msg.Payload) <= 2048 {
 					//printMessageInfo(msg)
-					ChanWhiper <- msg.Payload
+					ChanWhisper <- msg.Payload
 					reportedOnce = true
 				}
 

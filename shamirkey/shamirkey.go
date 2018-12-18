@@ -96,7 +96,7 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 		}
 		CommitteeNodeList = append(CommitteeNodeList, asym)
 	}
-	fmt.Println(CommitteeNodeList)
+	log.Debug("CommitteeNodeList", "list", CommitteeNodeList)
 }
 
 func ShamirKeySharesGenerate(id int) {
@@ -150,7 +150,7 @@ func ShamirKeySharesListening(p *config.CommittteeProfile) {
 	var input []byte
 
 	for {
-		input = <-wnode.ChanWhiper
+		input = <-wnode.ChanWhisper
 
 		m, err := msg.UnpackMsg(input)
 		if err != nil {
@@ -173,8 +173,8 @@ func ShamirKeySharesListening(p *config.CommittteeProfile) {
 			log.Debug("detected a new logged in committee")
 			ShamirKeySharesGenerate(p.CommitteeID)
 		case msg.SubAccountVerifyMsg:
-			log.Debug("received a new account verify msg")
 			certID, pubshares, pubSkey := msg.UnpackAccountVerifyShare(m.Data)
+			log.Debug("received a new account verify msg", "certID", certID)
 			SaveVerifyMsg(certID, pubSkey, m.Sender, pubshares, CommitteeRequires)
 		}
 	}
@@ -227,7 +227,6 @@ func AccountShareSharer(usechain *config.Usechain) {
 	for {
 		time.Sleep(time.Second * 1)
 		identity.ScanIdentityAccount(usechain, priv, CommitteeNodeList)
-		break
 	}
 }
 

@@ -17,7 +17,6 @@
 package node
 
 import (
-	"os"
 	"github.com/usechain/go-usechain/cmd/utils"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usedrpc"
@@ -36,8 +35,8 @@ var (
 
 //init the committee global config
 func initial() {
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
 	log.Info("Committee node initializing ......")
+	time.Sleep(time.Second * 5)
 
 	var err error
 	globalConfig.UserProfile, err = config.ReadProfile()
