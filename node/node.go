@@ -72,7 +72,7 @@ func initial() {
 		}
 
 		log.Warn("Please unlock the committee account")
-		log.Warn("committee.unlock \"passwd\":")
+		log.Warn("Enter \"committee.unlock \"passwd\"\"")
 		select {
 		case passwd := <- account.CommitteePasswd:
 			err = globalConfig.Kstore.TimedUnlock(signer, passwd, 0)
