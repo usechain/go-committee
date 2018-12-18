@@ -18,7 +18,6 @@ package main
 
 import (
 	"fmt"
-	"os"
 	"github.com/usechain/go-committee/account"
 	"github.com/usechain/go-committee/console"
 	"github.com/usechain/go-committee/node/config"
@@ -44,13 +43,21 @@ func main() {
 			p, _ := config.ReadProfile()
 			p.Address = ac.Address.Hex()
 			config.UpdateProfile(p)
-			fmt.Println("Updated")
-			os.Exit(1)
+			fmt.Println("==========committee.json Updated")
+			active = false
 		case "n":
 			fmt.Println("Finished")
-			os.Exit(1)
+			active = false
 		default:
 			fmt.Println("Please enter \"y\" or \"n\"")
 		}
 	}
+
+	fmt.Println("Please enter a used node url, example:\"http://10.30.43.237:8545\"")
+	fmt.Print("URL:")
+	url := console.Readline()
+	p, _ := config.ReadUsedConfig()
+	p.Url = url
+	config.UpdateUsedConfig(p)
+	fmt.Println("==========used.json Updated")
 }

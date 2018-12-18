@@ -165,3 +165,19 @@ func ReadUsedConfig() (*UsedConfig, error) {
 	}
 	return used, err
 }
+
+func UpdateUsedConfig(used *UsedConfig) error {
+	b, err := json.Marshal(used)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	cfg, _ := os.OpenFile(utils.DefaultDataDir() + "used.json", os.O_RDWR, 0666)
+	defer cfg.Close()
+
+	cfg.Truncate(0)
+	_, err = cfg.WriteAt(b,0)
+	if err != nil {
+		fmt.Println("err", err)
+	}
+	return err
+}
