@@ -32,7 +32,7 @@ import (
 
 var (
 	globalConfig  config.Usechain
-	wg			  *sync.WaitGroup
+	wg			  sync.WaitGroup
 )
 
 //init the committee global config
