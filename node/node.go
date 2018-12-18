@@ -17,6 +17,9 @@
 package node
 
 import (
+	"fmt"
+	"time"
+	"sync"
 	"github.com/usechain/go-usechain/cmd/utils"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usedrpc"
@@ -25,12 +28,11 @@ import (
 	"github.com/usechain/go-committee/contract/manager"
 	"github.com/usechain/go-committee/shamirkey"
 	"github.com/usechain/go-committee/node/config"
-	"fmt"
-	"time"
 )
 
 var (
 	globalConfig  config.Usechain
+	wg			  *sync.WaitGroup
 )
 
 //init the committee global config
@@ -123,17 +125,33 @@ func run() {
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
 			shamirkey.InitShamirCommitteeNumber(globalConfig)
 
-			go shamirkey.ShamirKeyShareCheck(&globalConfig)
-			go shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+			//Check whether get enough shares
+			go func(){
+				wg.Add(1)
+				shamirkey.ShamirKeyShareCheck(&globalConfig)
+			}()
 
+			// Listening the network msg
+			go func(){
+				wg.Add(1)
+				shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+			}()
+
+			//Request private share & self part generation
 			shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
 			shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID)
+			wg.Wait()
 
 		case config.Verifying:
 			log.Debug("Verifying...")
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
 			shamirkey.InitShamirCommitteeNumber(globalConfig)
-			go shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+
+			// Listening the network msg
+			go func(){
+				wg.Add(1)
+				shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+			}()
 			switch globalConfig.UserProfile.Role {
 			case "Sharer":
 				log.Debug("Sharer start!")
@@ -144,11 +162,12 @@ func run() {
 			default:
 				log.Debug("Unknown role")
 			}
+			wg.Wait()
 
 		default:
 			utils.Fatalf("Unknown state")
 		}
-		time.Sleep(time.Second * 20)
+		time.Sleep(time.Second * 30)
 	}
 
 	return
