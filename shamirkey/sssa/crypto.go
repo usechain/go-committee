@@ -23,6 +23,25 @@ import (
 	"github.com/usechain/go-committee/utils"
 )
 
+type PrivateShare struct {
+	Index 	*big.Int
+	Key 	*big.Int
+}
+
+// Import an privateShare
+func NewPrivateShare(share string) *PrivateShare {
+	// ...ensure that it is valid...
+	if IsValidShare(share) == false {
+		return nil
+	}
+	index := utils.FromBase64(share[0:44])
+	key := utils.FromBase64(share[44:88])
+	return &PrivateShare{
+		Index:      index,
+		Key:		key,
+	}
+}
+
 //Generate private key from a big.int
 func generatePrivKey(key *big.Int) *ecdsa.PrivateKey {
 	priv := new(ecdsa.PrivateKey)
@@ -31,6 +50,10 @@ func generatePrivKey(key *big.Int) *ecdsa.PrivateKey {
 	priv.PublicKey.X, priv.PublicKey.Y = crypto.S256().ScalarBaseMult(key.Bytes())
 
 	return priv
+}
+
+func GeneratePrivKey(key *big.Int) *ecdsa.PrivateKey {
+	return generatePrivKey(key)
 }
 
 //Extract private share from string
