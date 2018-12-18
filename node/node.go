@@ -136,7 +136,7 @@ func run() {
 				wg.Add(1)
 				shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
 			}()
-
+			time.Sleep(time.Second*1)
 			//Request private share & self part generation
 			shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
 			shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID)
