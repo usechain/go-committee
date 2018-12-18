@@ -128,10 +128,11 @@ func ScanIdentityAccount(usechain *config.Usechain, priv *ecdsa.PrivateKey, node
 			return
 		}
 		// If already checked, pass it
-		if certID.Cmp(CertIDLastCached) == -1 {
+		if certID.Cmp(CertIDLastCached) != 1 {
 			continue
 		}
 
+		log.Debug("Check a new account verifying")
 		// get address based on cert id as index
 		res, err = idctr.ContractCallParsed(rpc, coinbase,"CertToAddress", certID)
 		if err != nil {
@@ -160,16 +161,15 @@ func ScanIdentityAccount(usechain *config.Usechain, priv *ecdsa.PrivateKey, node
 			log.Error("RingSig decode failed!", err)
 		}
 
-		for i := range pubSet {
-			fmt.Println("+++++++", pubSet[i])
-		}
+		//for i := range pubSet {
+		//	fmt.Println("+++++++", pubSet[i])
+		//}
 
 		m := msg.PackAccountVerifyShare(certID, pubSet, addrlist.PubSKey, priv, id)
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[0])))
 
 		//update the CertIDLastCached
 		CertIDLastCached = certID
-		break
 	}
 }
 

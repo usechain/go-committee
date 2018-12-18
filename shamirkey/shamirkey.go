@@ -34,7 +34,6 @@ import (
 	"github.com/usechain/go-committee/contract/manager"
 )
 
-const testNode = "http://10.30.43.237:8545"
 var (
 	CommitteeMax = 3
 	CommitteeRequires = 2
