@@ -26,6 +26,7 @@ import (
 	"github.com/usechain/go-committee/contract/manager"
 	"github.com/usechain/go-committee/shamirkey"
 	"github.com/usechain/go-committee/node/config"
+	"fmt"
 )
 
 var (
@@ -73,6 +74,7 @@ func initial() {
 
 		log.Warn("Please unlock the committee account")
 		log.Warn("Enter \"committee.unlock \"passwd\"\"")
+		fmt.Print("Enter:")
 		select {
 		case passwd := <- account.CommitteePasswd:
 			err = globalConfig.Kstore.TimedUnlock(signer, passwd, 0)

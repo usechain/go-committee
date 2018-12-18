@@ -119,7 +119,6 @@ func New() *Console {
 	})
 
 	con.Add("committee.unlock", "Unlock the committee account", func(typed string) {
-		fmt.Println("typed", typed)
 		arr := strings.Fields(typed)
 		account.CommitteePasswd <- arr[1]
 	})
