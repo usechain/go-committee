@@ -656,7 +656,7 @@ func sendMsg(payload []byte) common.Hash {
 		Payload:  payload,
 		Topic:    topic,
 		TTL:      uint32(*argTTL),
-		PoW:      *argPoW,
+		PoW:      *argPoW + 0.1,
 		WorkTime: uint32(*argWorkTime),
 	}
 

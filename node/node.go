@@ -27,6 +27,7 @@ import (
 	"github.com/usechain/go-committee/shamirkey"
 	"github.com/usechain/go-committee/node/config"
 	"fmt"
+	"time"
 )
 
 var (
@@ -89,63 +90,66 @@ func initial() {
 
 //committee work main process
 func run() {
-	globalConfig.Workstat = config.GetState(globalConfig)
-	log.Debug("The process is in stage", "workStat", globalConfig.Workstat)
+	for {
+		globalConfig.Workstat = config.GetState(globalConfig)
+		log.Debug("The process is in stage", "workStat", globalConfig.Workstat)
 
-	switch globalConfig.Workstat {
-	case config.NotCommittee:
-		utils.Fatalf("Not a legal committee address!")
+		switch globalConfig.Workstat {
+		case config.NotCommittee:
+			utils.Fatalf("Not a legal committee address!")
 
-	case config.Selected:
-		log.Debug("selected, please confirm")
-		//Get committe id from contract
-		id, err := manager.GetSelfCommitteeID( globalConfig)
-		if err != nil || id == -1{
-			log.Error("Get certid failed", "err", err)
-		}
-		globalConfig.UserProfile.CommitteeID = id
-		if id == 0 {
-			globalConfig.UserProfile.Role = "Verifier"
-		}else {
-			globalConfig.UserProfile.Role = "Sharer"
-		}
-		config.UpdateProfile(globalConfig.UserProfile)
+		case config.Selected:
+			log.Debug("selected, please confirm")
+			//Get committe id from contract
+			id, err := manager.GetSelfCommitteeID( globalConfig)
+			if err != nil || id == -1{
+				log.Error("Get certid failed", "err", err)
+			}
+			globalConfig.UserProfile.CommitteeID = id
+			if id == 0 {
+				globalConfig.UserProfile.Role = "Verifier"
+			}else {
+				globalConfig.UserProfile.Role = "Sharer"
+			}
+			config.UpdateProfile(globalConfig.UserProfile)
 
-		//Confirm & upload self asym key
-		manager.ConfirmAndKeyUpload(globalConfig)
+			//Confirm & upload self asym key
+			manager.ConfirmAndKeyUpload(globalConfig)
 
-	case config.WaittingOther:
-		log.Debug("Just waitting!")
+		case config.WaittingOther:
+			log.Debug("Just waitting!")
 
-	case config.KeyGenerating:
-		log.Warn("KeyGenerating")
-		//Read from contract to update certid, upload asym key, and download all committee certID and asym key
-		shamirkey.InitShamirCommitteeNumber(globalConfig)
+		case config.KeyGenerating:
+			log.Warn("KeyGenerating")
+			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
+			shamirkey.InitShamirCommitteeNumber(globalConfig)
 
-		go shamirkey.ShamirKeyShareCheck(&globalConfig)
-		go shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+			go shamirkey.ShamirKeyShareCheck(&globalConfig)
+			go shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
 
-		shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
-		shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID)
+			shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
+			shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID)
 
-	case config.Verifying:
-		log.Debug("Verifying...")
-		//Read from contract to update certid, upload asym key, and download all committee certID and asym key
-		shamirkey.InitShamirCommitteeNumber(globalConfig)
-		go shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
-		switch globalConfig.UserProfile.Role {
-		case "Sharer":
-			log.Debug("Sharer start!")
-			shamirkey.AccountShareSharer(&globalConfig)
-		case "Verifier":
-			log.Debug("Verifier start")
-			shamirkey.AccountShareVerifer(&globalConfig)
+		case config.Verifying:
+			log.Debug("Verifying...")
+			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
+			shamirkey.InitShamirCommitteeNumber(globalConfig)
+			go shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+			switch globalConfig.UserProfile.Role {
+			case "Sharer":
+				log.Debug("Sharer start!")
+				shamirkey.AccountShareSharer(&globalConfig)
+			case "Verifier":
+				log.Debug("Verifier start")
+				shamirkey.AccountShareVerifer(&globalConfig)
+			default:
+				log.Debug("Unknown role")
+			}
+
 		default:
-			log.Debug("Unknown role")
+			utils.Fatalf("Unknown state")
 		}
-
-	default:
-		utils.Fatalf("Unknown state")
+		time.Sleep(time.Second * 20)
 	}
 
 	return
