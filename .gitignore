@@ -37,6 +37,3 @@ profile.cov
 
 # config
 build/keystore/*
-build/profile/committee.json
-build/profile/used.json
-build/profile/whisper.json

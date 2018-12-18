@@ -1,11 +1,13 @@
 pragma solidity ^ 0.4.24;
 
+
 contract committeeStorage {
     // @notice Main Storage
 
+
     // @notice Committee
-    uint constant public MAX_COMMITTEEMAN_COUNT = 5;
-    uint constant public Requirement = 3;
+    uint constant public MAX_COMMITTEEMAN_COUNT = 4;
+    uint constant public Requirement = 2;
 
     uint constant public Election_cycle = 2628000;
     uint constant public Election_duration = 50000;
@@ -197,6 +199,17 @@ contract committeeStorage {
         return 0xffff;
     }
 
+    // @notice check the committee whether confirmed
+    function getCommitteeConfirmStat()
+    public
+    constant
+    returns(bool)
+    {
+        uint roundIndex = whichRound();
+        uint committeeIndex = getCommitteeIndex();
+        return rounds[roundIndex].committes[committeeIndex].confirmed;
+    }
+
     // @notice confirm & upload whisper asymPubkey
     function confirmAndKeyUpload(string _asymPubkey)
     isCommittee
@@ -208,19 +221,49 @@ contract committeeStorage {
         rounds[roundIndex].committes[committeeIndex].asymPubkey = _asymPubkey;
     }
 
+    // @notice get committee asym key
+    function getCommitteeAsymkey(uint index)
+    public
+    constant
+    returns(string)
+    {
+        uint roundIndex = whichRound();
+        return rounds[roundIndex].committes[index].asymPubkey;
+    }
+
+    //Check whether all committee confirmed&&uploaded
+    function isEntireConfirmed()
+    public
+    constant
+    returns(bool)
+    {
+        uint roundIndex = whichRound();
+        for(uint i = 0; i < MAX_COMMITTEEMAN_COUNT; i++) {
+        if (rounds[roundIndex].committes[i].confirmed == false) {
+            return false;
+        }
+    }
+        return true;
+    }
+
+
     /*****************committeePublicKey upload & confirm********************/
-    //upload committee public key
+    //upload committee's personal public key
     function uploadCommitteePubkey(string _pubkey)
     isCommittee
     public
     {
         uint roundIndex = whichRound();
-        rounds[roundIndex].committeePublicKey_candidate = _pubkey;
-        rounds[roundIndex].pubKeyConfirmed[msg.sender] = true;
-        rounds[roundIndex].confirmCount ++;
+        require(isEntireConfirmed() == true);
+        rounds[roundIndex].committeePublicKey = _pubkey;
+        // uint roundIndex = whichRound();
+        // rounds[roundIndex].committeePublicKey_candidate = _pubkey;
+        // rounds[roundIndex].pubKeyConfirmed[msg.sender] = true;
+        // rounds[roundIndex].confirmCount == 1;
     }
 
     //confirm the committee public key
+    ///TODO: Not used yet
     function confirmCommitteePubkey(string _pubkey)
     isCommittee
     public
@@ -236,6 +279,16 @@ contract committeeStorage {
         if(rounds[roundIndex].confirmCount >= Requirement) {
             rounds[roundIndex].committeePublicKey = rounds[roundIndex].committeePublicKey_candidate;
         }
+    }
+
+    //@dev get the current committeePublicKey
+    function getCommitteePubkey()
+    public
+    constant
+    returns(string)
+    {
+        uint roundIndex = whichRound();
+        return rounds[roundIndex].committeePublicKey;
     }
 
 
