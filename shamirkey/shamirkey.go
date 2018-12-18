@@ -204,6 +204,9 @@ func ShamirKeyShareCheck(usechain *config.Usechain) {
 	res := utils.ToBase64(big.NewInt(int64(id)))
 	res += utils.ToBase64(priv)
 
+	//update global config
+	usechain.UserProfile.PrivShares = res
+
 	//update local profile
 	p, _ := config.ReadProfile()
 	p.PrivShares = res
