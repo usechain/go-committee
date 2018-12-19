@@ -70,16 +70,17 @@ func CheckVerifyMsg(usechain *config.Usechain, requires int) {
 			pubshares := utils.PermutationStrings(tmpset)
 			var tmpKey ecdsa.PublicKey
 			for _, share := range pubshares {
+				fmt.Println("share", share)
 				pub, err := sssa.CombineECDSAPubkey(share)
 				if err != nil {
 					fmt.Println("Fatal: combining: ", err)
+					continue
 				}
 
 				tmpKey = sssa.ScanPubSharesA1(pub, S1)
 				if tmpKey.X.Cmp(A1.X) == 0&& tmpKey.Y.Cmp(A1.Y) == 0 {
 					log.Warn("legal address", "address",  crypto.PubkeyToAddress(*A1))
 					///TODO:send confirm tx to contract
-
 					identity.SendAuthenticationConfirm(usechain, CertIDMap[a1s1], true)
 					break
 				}

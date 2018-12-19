@@ -91,6 +91,11 @@ func initial() {
 
 //committee work main process
 func run() {
+	// Listening the network msg
+	go func(){
+		shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+	}()
+
 	for {
 		globalConfig.Workstat = config.GetState(globalConfig)
 		log.Debug("The process is in stage", "workStat", globalConfig.Workstat)
@@ -128,18 +133,13 @@ func run() {
 			//Check whether get enough shares
 			go func(){
 				wg.Add(1)
+				defer wg.Done()
 				shamirkey.ShamirKeyShareCheck(&globalConfig)
 			}()
 
-			// Listening the network msg
-			go func(){
-				wg.Add(1)
-				shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
-			}()
-			time.Sleep(time.Second*1)
 			//Request private share & self part generation
-			shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
 			shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID)
+			shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
 			wg.Wait()
 
 		case config.Verifying:
@@ -147,11 +147,6 @@ func run() {
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
 			shamirkey.InitShamirCommitteeNumber(globalConfig)
 
-			// Listening the network msg
-			go func(){
-				wg.Add(1)
-				shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
-			}()
 			switch globalConfig.UserProfile.Role {
 			case "Sharer":
 				log.Debug("Sharer start!")
@@ -162,7 +157,6 @@ func run() {
 			default:
 				log.Debug("Unknown role")
 			}
-			wg.Wait()
 
 		default:
 			utils.Fatalf("Unknown state")

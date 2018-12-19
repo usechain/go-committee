@@ -35,7 +35,7 @@ import (
 )
 
 var (
-	CommitteeMax = 3
+	CommitteeMax = 3				//Just default params, will update from contract when process running
 	CommitteeRequires = 2
 	CommitteeNodeList []string		// CommitteeNodeList[0] is the verifier
 									// Verifier isn't include in CommitteeMax&CommitteeRequires
@@ -47,7 +47,7 @@ var (
 	PolynomialArray [][]*ecdsa.PublicKey = make([][]*ecdsa.PublicKey, CommitteeMax)
 	PrivateKeyShare []string = make([]string, CommitteeMax)
 
-	selfMsgCache [][]byte = make([][]byte, CommitteeMax)
+	selfMsgCache []string
 )
 
 
@@ -129,7 +129,7 @@ func ShamirKeySharesGenerate(id int) {
 	// broadcast the shares
 	m := msg.PackPolynomialShare(polyPublicKeys, id)
 	wnode.SendMsg(m, nil)
-	selfMsgCache[0] = m
+	selfMsgCache = append(selfMsgCache, string(m))
 
 	// send f(j) to j committee
 	for i:= range CommitteeNodeList {
@@ -138,15 +138,16 @@ func ShamirKeySharesGenerate(id int) {
 		}
 		m = msg.PackKeyPointShare(created[i-1], id)
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[i])))
-		selfMsgCache[i] = m
+		selfMsgCache = append(selfMsgCache, string(m))
+		fmt.Println("+++++selfMsgCache[sender]", selfMsgCache[i], i)
 	}
 }
 
 // Broadcast polynomialShare && send f(j) to determined committee
 func ShamirSharesReponse(sender int) {
-	if selfMsgCache[0] != nil &&  selfMsgCache[sender] != nil{
-		wnode.SendMsg(selfMsgCache[0], nil)
-		wnode.SendMsg(selfMsgCache[sender], crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[sender])))
+	if len(selfMsgCache) != 0 {
+		wnode.SendMsg([]byte(selfMsgCache[0]), nil)
+		wnode.SendMsg([]byte(selfMsgCache[sender]), crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[sender])))
 	}
 }
 

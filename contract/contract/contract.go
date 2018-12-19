@@ -124,20 +124,20 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 
 	//fmt.Printf("bytes: %x\n", bytes)
 	tx := types.NewTransaction(uint64(nonce), common.HexToAddress(crt.Address), nil, 1000000, big.NewInt(1000000000), bytes)
-	fmt.Println("coinbase", coinbase)
+	//fmt.Println("coinbase", coinbase)
 	//ks := account.DefaultKeystore()
 	ac, err := account.CommitteeAccount(common.HexToAddress(coinbase), ks)
 	if err != nil {
 		fmt.Println("account:", err)
 	}
-	fmt.Println("ac",ac.Address.Hex())
+	//fmt.Println("ac",ac.Address.Hex())
 
 	signedTx, err := ks.SignTx(ac, tx, big.NewInt(2))
 	if err != nil {
 		log.Error("Sign the committee Msg failed, Please unlock the verifier account", "err", err)
 		return "", err
 	}
-	fmt.Println("signed")
+	//fmt.Println("signed")
 
 	txbyte, err := rlp.EncodeToBytes(signedTx)
 	result, err := node.UseSendRawTransaction(hexutil.Encode(txbyte))
