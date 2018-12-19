@@ -144,8 +144,10 @@ func ShamirKeySharesGenerate(id int) {
 
 // Broadcast polynomialShare && send f(j) to determined committee
 func ShamirSharesReponse(sender int) {
-	wnode.SendMsg(selfMsgCache[0], nil)
-	wnode.SendMsg(selfMsgCache[sender], crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[sender])))
+	if selfMsgCache[0] != nil &&  selfMsgCache[sender] != nil{
+		wnode.SendMsg(selfMsgCache[0], nil)
+		wnode.SendMsg(selfMsgCache[sender], crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[sender])))
+	}
 }
 
 // Broadcast NewCommitteeLogInMsg,  request for sharing keys
