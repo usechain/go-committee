@@ -46,6 +46,8 @@ var (
 var (
 	PolynomialArray [][]*ecdsa.PublicKey = make([][]*ecdsa.PublicKey, CommitteeMax)
 	PrivateKeyShare []string = make([]string, CommitteeMax)
+
+	selfMsgCache [][]byte = make([][]byte, CommitteeMax)
 )
 
 
@@ -127,6 +129,7 @@ func ShamirKeySharesGenerate(id int) {
 	// broadcast the shares
 	m := msg.PackPolynomialShare(polyPublicKeys, id)
 	wnode.SendMsg(m, nil)
+	selfMsgCache[0] = m
 
 	// send f(j) to j committee
 	for i:= range CommitteeNodeList {
@@ -135,7 +138,14 @@ func ShamirKeySharesGenerate(id int) {
 		}
 		m = msg.PackKeyPointShare(created[i-1], id)
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[i])))
+		selfMsgCache[i] = m
 	}
+}
+
+// Broadcast polynomialShare && send f(j) to determined committee
+func ShamirSharesReponse(sender int) {
+	wnode.SendMsg(selfMsgCache[0], nil)
+	wnode.SendMsg(selfMsgCache[sender], crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[sender])))
 }
 
 // Broadcast NewCommitteeLogInMsg,  request for sharing keys
@@ -171,7 +181,8 @@ func ShamirKeySharesListening(p *config.CommittteeProfile) {
 			PrivateKeyShare[m.Sender-1] = string(m.Data[0])
 		case msg.NewCommitteeLogInMsg:
 			log.Debug("detected a new logged in committee")
-			ShamirKeySharesGenerate(p.CommitteeID)
+			ShamirSharesReponse(m.Sender)
+			//ShamirKeySharesGenerate(p.CommitteeID)
 		case msg.SubAccountVerifyMsg:
 			certID, pubshares, pubSkey := msg.UnpackAccountVerifyShare(m.Data)
 			log.Debug("received a new account verify msg", "certID", certID)
