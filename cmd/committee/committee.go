@@ -17,22 +17,20 @@
 package main
 
 import (
-	"os"
-	"github.com/usechain/go-usechain/log"
+	//"os"
+	//"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-committee/console"
 	"github.com/usechain/go-committee/node"
 	"github.com/usechain/go-committee/wnode"
-	"time"
 )
 
 func main() {
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
+	//log.Root().SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
 	con := console.New()
 
 	// Start whisper node
 	go wnode.Wnode()
 
-	time.Sleep(time.Second*5)
 	// Start committee service
 	go node.Start()
 

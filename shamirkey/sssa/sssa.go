@@ -221,7 +221,7 @@ func IsValidShare(candidate string) bool {
 	// Set constant prime across the package
 	prime, _ = big.NewInt(0).SetString(DefaultPrimeStr, 10)
 
-	if len(candidate)%88 != 0 && len(candidate)%132 != 0{
+	if (len(candidate)%88 != 0 && len(candidate)%132 != 0) || len(candidate) == 0{
 		fmt.Println("length error")
 		return false
 	}

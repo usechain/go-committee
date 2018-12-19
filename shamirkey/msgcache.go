@@ -48,8 +48,6 @@ func SaveVerifyMsg(certid *big.Int, a1s1 string, senderId int, shares []string, 
 
 func CheckVerifyMsg(usechain *config.Usechain, requires int) {
 	for a1s1, value := range MsgCountMap {
-		fmt.Println("value", int(value))
-
 		//check whether got enough shares
 		if c, idset := utils.BitCount(int(value)); c >= requires {
 			//extract the a1s1
@@ -72,16 +70,17 @@ func CheckVerifyMsg(usechain *config.Usechain, requires int) {
 			pubshares := utils.PermutationStrings(tmpset)
 			var tmpKey ecdsa.PublicKey
 			for _, share := range pubshares {
+				fmt.Println("share", share)
 				pub, err := sssa.CombineECDSAPubkey(share)
 				if err != nil {
 					fmt.Println("Fatal: combining: ", err)
+					continue
 				}
 
 				tmpKey = sssa.ScanPubSharesA1(pub, S1)
 				if tmpKey.X.Cmp(A1.X) == 0&& tmpKey.Y.Cmp(A1.Y) == 0 {
-					fmt.Println("legal address")
+					log.Warn("legal address", "address",  crypto.PubkeyToAddress(*A1))
 					///TODO:send confirm tx to contract
-
 					identity.SendAuthenticationConfirm(usechain, CertIDMap[a1s1], true)
 					break
 				}

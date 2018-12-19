@@ -17,7 +17,9 @@
 package node
 
 import (
-	"os"
+	"fmt"
+	"time"
+	"sync"
 	"github.com/usechain/go-usechain/cmd/utils"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usedrpc"
@@ -26,17 +28,17 @@ import (
 	"github.com/usechain/go-committee/contract/manager"
 	"github.com/usechain/go-committee/shamirkey"
 	"github.com/usechain/go-committee/node/config"
-	"fmt"
 )
 
 var (
 	globalConfig  config.Usechain
+	wg			  sync.WaitGroup
 )
 
 //init the committee global config
 func initial() {
-	log.Root().SetHandler(log.LvlFilterHandler(log.LvlDebug, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
 	log.Info("Committee node initializing ......")
+	time.Sleep(time.Second * 5)
 
 	var err error
 	globalConfig.UserProfile, err = config.ReadProfile()
@@ -74,7 +76,7 @@ func initial() {
 
 		log.Warn("Please unlock the committee account")
 		log.Warn("Enter \"committee.unlock \"passwd\"\"")
-		fmt.Print("Enter:")
+		fmt.Print("=====> ")
 		select {
 		case passwd := <- account.CommitteePasswd:
 			err = globalConfig.Kstore.TimedUnlock(signer, passwd, 0)
@@ -89,63 +91,77 @@ func initial() {
 
 //committee work main process
 func run() {
-	globalConfig.Workstat = config.GetState(globalConfig)
-	log.Debug("The process is in stage", "workStat", globalConfig.Workstat)
+	// Listening the network msg
+	go func(){
+		shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+	}()
 
-	switch globalConfig.Workstat {
-	case config.NotCommittee:
-		utils.Fatalf("Not a legal committee address!")
+	for {
+		globalConfig.Workstat = config.GetState(globalConfig)
+		log.Debug("The process is in stage", "workStat", globalConfig.Workstat)
 
-	case config.Selected:
-		log.Debug("selected, please confirm")
-		//Get committe id from contract
-		id, err := manager.GetSelfCommitteeID( globalConfig)
-		if err != nil || id == -1{
-			log.Error("Get certid failed", "err", err)
-		}
-		globalConfig.UserProfile.CommitteeID = id
-		if id == 0 {
-			globalConfig.UserProfile.Role = "Verifier"
-		}else {
-			globalConfig.UserProfile.Role = "Sharer"
-		}
-		config.UpdateProfile(globalConfig.UserProfile)
+		switch globalConfig.Workstat {
+		case config.NotCommittee:
+			utils.Fatalf("Not a legal committee address!")
 
-		//Confirm & upload self asym key
-		manager.ConfirmAndKeyUpload(globalConfig)
+		case config.Selected:
+			log.Debug("selected, please confirm")
+			//Get committe id from contract
+			id, err := manager.GetSelfCommitteeID( globalConfig)
+			if err != nil || id == -1{
+				log.Error("Get certid failed", "err", err)
+			}
+			globalConfig.UserProfile.CommitteeID = id
+			if id == 0 {
+				globalConfig.UserProfile.Role = "Verifier"
+			}else {
+				globalConfig.UserProfile.Role = "Sharer"
+			}
+			config.UpdateProfile(globalConfig.UserProfile)
 
-	case config.WaittingOther:
-		log.Debug("Just waitting!")
+			//Confirm & upload self asym key
+			manager.ConfirmAndKeyUpload(globalConfig)
 
-	case config.KeyGenerating:
-		log.Warn("KeyGenerating")
-		//Read from contract to update certid, upload asym key, and download all committee certID and asym key
-		shamirkey.InitShamirCommitteeNumber(globalConfig)
+		case config.WaittingOther:
+			log.Debug("Just waitting!")
 
-		go shamirkey.ShamirKeyShareCheck(&globalConfig)
-		go shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+		case config.KeyGenerating:
+			log.Warn("KeyGenerating")
+			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
+			shamirkey.InitShamirCommitteeNumber(globalConfig)
 
-		shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
-		shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID)
+			//Check whether get enough shares
+			go func(){
+				wg.Add(1)
+				defer wg.Done()
+				shamirkey.ShamirKeyShareCheck(&globalConfig)
+			}()
 
-	case config.Verifying:
-		log.Debug("Verifying...")
-		//Read from contract to update certid, upload asym key, and download all committee certID and asym key
-		shamirkey.InitShamirCommitteeNumber(globalConfig)
-		go shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
-		switch globalConfig.UserProfile.Role {
-		case "Sharer":
-			log.Debug("Sharer start!")
-			shamirkey.AccountShareSharer(&globalConfig)
-		case "Verifier":
-			log.Debug("Verifier start")
-			shamirkey.AccountShareVerifer(&globalConfig)
+			//Request private share & self part generation
+			shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID)
+			shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
+			wg.Wait()
+
+		case config.Verifying:
+			log.Debug("Verifying...")
+			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
+			shamirkey.InitShamirCommitteeNumber(globalConfig)
+
+			switch globalConfig.UserProfile.Role {
+			case "Sharer":
+				log.Debug("Sharer start!")
+				shamirkey.AccountShareSharer(&globalConfig)
+			case "Verifier":
+				log.Debug("Verifier start")
+				shamirkey.AccountShareVerifer(&globalConfig)
+			default:
+				log.Debug("Unknown role")
+			}
+
 		default:
-			log.Debug("Unknown role")
+			utils.Fatalf("Unknown state")
 		}
-
-	default:
-		utils.Fatalf("Unknown state")
+		time.Sleep(time.Second * 30)
 	}
 
 	return

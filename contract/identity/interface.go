@@ -114,10 +114,10 @@ func ScanIdentityAccount(usechain *config.Usechain, priv *ecdsa.PrivateKey, node
 	}
 
 	unconfirmedCount, _ := big.NewInt(0).SetString(res[2:], 16)
-	log.Debug("unconfirmedcount", "count", unconfirmedCount)
+	//log.Debug("unconfirmedcount", "count", unconfirmedCount)
 	for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 		// get unconfirmed address index
-		res, err := idctr.ContractCallParsed(rpc, coinbase,"unConfirmedAddress", big.NewInt(35))
+		res, err := idctr.ContractCallParsed(rpc, coinbase,"unConfirmedAddress", big.NewInt(i))
 		if err != nil {
 			log.Error("read unconfirmed address failed",  "err", err)
 			return
@@ -128,7 +128,7 @@ func ScanIdentityAccount(usechain *config.Usechain, priv *ecdsa.PrivateKey, node
 			return
 		}
 		// If already checked, pass it
-		if certID.Cmp(CertIDLastCached) == -1 {
+		if certID.Cmp(CertIDLastCached) != 1 {
 			continue
 		}
 
@@ -143,7 +143,7 @@ func ScanIdentityAccount(usechain *config.Usechain, priv *ecdsa.PrivateKey, node
 			log.Error("It's not ok for", "type", reflect.TypeOf(res[1]))
 			return
 		}
-		//fmt.Println("addr", value)
+		log.Debug("get a new account verifying", "address", value)
 
 		// get address detail info based on address as index
 		res, err = idctr.ContractCallParsed(rpc, coinbase,"CertificateAddr", value)
@@ -160,16 +160,15 @@ func ScanIdentityAccount(usechain *config.Usechain, priv *ecdsa.PrivateKey, node
 			log.Error("RingSig decode failed!", err)
 		}
 
-		for i := range pubSet {
-			fmt.Println("+++++++", pubSet[i])
-		}
+		//for i := range pubSet {
+		//	fmt.Println("+++++++", pubSet[i])
+		//}
 
 		m := msg.PackAccountVerifyShare(certID, pubSet, addrlist.PubSKey, priv, id)
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[0])))
 
 		//update the CertIDLastCached
 		CertIDLastCached = certID
-		break
 	}
 }
 

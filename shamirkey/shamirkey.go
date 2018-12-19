@@ -34,9 +34,8 @@ import (
 	"github.com/usechain/go-committee/contract/manager"
 )
 
-const testNode = "http://10.30.43.237:8545"
 var (
-	CommitteeMax = 3
+	CommitteeMax = 3				//Just default params, will update from contract when process running
 	CommitteeRequires = 2
 	CommitteeNodeList []string		// CommitteeNodeList[0] is the verifier
 									// Verifier isn't include in CommitteeMax&CommitteeRequires
@@ -47,6 +46,8 @@ var (
 var (
 	PolynomialArray [][]*ecdsa.PublicKey = make([][]*ecdsa.PublicKey, CommitteeMax)
 	PrivateKeyShare []string = make([]string, CommitteeMax)
+
+	selfMsgCache []string
 )
 
 
@@ -97,7 +98,7 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 		}
 		CommitteeNodeList = append(CommitteeNodeList, asym)
 	}
-	fmt.Println(CommitteeNodeList)
+	log.Debug("CommitteeNodeList", "list", CommitteeNodeList)
 }
 
 func ShamirKeySharesGenerate(id int) {
@@ -128,6 +129,7 @@ func ShamirKeySharesGenerate(id int) {
 	// broadcast the shares
 	m := msg.PackPolynomialShare(polyPublicKeys, id)
 	wnode.SendMsg(m, nil)
+	selfMsgCache = append(selfMsgCache, string(m))
 
 	// send f(j) to j committee
 	for i:= range CommitteeNodeList {
@@ -136,6 +138,16 @@ func ShamirKeySharesGenerate(id int) {
 		}
 		m = msg.PackKeyPointShare(created[i-1], id)
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[i])))
+		selfMsgCache = append(selfMsgCache, string(m))
+		fmt.Println("+++++selfMsgCache[sender]", selfMsgCache[i], i)
+	}
+}
+
+// Broadcast polynomialShare && send f(j) to determined committee
+func ShamirSharesReponse(sender int) {
+	if len(selfMsgCache) != 0 {
+		wnode.SendMsg([]byte(selfMsgCache[0]), nil)
+		wnode.SendMsg([]byte(selfMsgCache[sender]), crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[sender])))
 	}
 }
 
@@ -151,7 +163,7 @@ func ShamirKeySharesListening(p *config.CommittteeProfile) {
 	var input []byte
 
 	for {
-		input = <-wnode.ChanWhiper
+		input = <-wnode.ChanWhisper
 
 		m, err := msg.UnpackMsg(input)
 		if err != nil {
@@ -172,10 +184,11 @@ func ShamirKeySharesListening(p *config.CommittteeProfile) {
 			PrivateKeyShare[m.Sender-1] = string(m.Data[0])
 		case msg.NewCommitteeLogInMsg:
 			log.Debug("detected a new logged in committee")
-			ShamirKeySharesGenerate(p.CommitteeID)
+			ShamirSharesReponse(m.Sender)
+			//ShamirKeySharesGenerate(p.CommitteeID)
 		case msg.SubAccountVerifyMsg:
-			log.Debug("received a new account verify msg")
 			certID, pubshares, pubSkey := msg.UnpackAccountVerifyShare(m.Data)
+			log.Debug("received a new account verify msg", "certID", certID)
 			SaveVerifyMsg(certID, pubSkey, m.Sender, pubshares, CommitteeRequires)
 		}
 	}
@@ -205,6 +218,9 @@ func ShamirKeyShareCheck(usechain *config.Usechain) {
 	res := utils.ToBase64(big.NewInt(int64(id)))
 	res += utils.ToBase64(priv)
 
+	//update global config
+	usechain.UserProfile.PrivShares = res
+
 	//update local profile
 	p, _ := config.ReadProfile()
 	p.PrivShares = res
@@ -228,7 +244,6 @@ func AccountShareSharer(usechain *config.Usechain) {
 	for {
 		time.Sleep(time.Second * 1)
 		identity.ScanIdentityAccount(usechain, priv, CommitteeNodeList)
-		break
 	}
 }
 

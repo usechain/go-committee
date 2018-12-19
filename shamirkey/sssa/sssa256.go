@@ -19,9 +19,10 @@ package sssa
 import (
 	"math/big"
 	"crypto/ecdsa"
-	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-committee/utils"
-	"fmt"
+	"github.com/usechain/go-usechain/crypto"
+	"github.com/usechain/go-usechain/log"
+	"github.com/usechain/go-usechain/common"
 )
 
 /**
@@ -376,13 +377,13 @@ func GenerateCommitteePublicKey(polynomials [][]*ecdsa.PublicKey) *ecdsa.PublicK
 	sumPub.Curve = crypto.S256()
 
 	for i := range polynomials {
-		fmt.Println("polynomials", polynomials[i][0])
+		//fmt.Println("polynomials", polynomials[i][0])
 		if 0 == i {
 			sumPub.X, sumPub.Y = polynomials[i][0].X, polynomials[i][0].Y
 			continue
 		}
 		sumPub.X, sumPub.Y = crypto.S256().Add(sumPub.X, sumPub.Y, polynomials[i][0].X, polynomials[i][0].Y)
 	}
-	fmt.Printf("committee key %x\n", crypto.FromECDSAPub(sumPub))
+	log.Warn("committee key generated", "publickey", common.ToHex(crypto.FromECDSAPub(sumPub)))
 	return sumPub
 }

@@ -103,7 +103,7 @@ func PackAccountVerifyShare(certid *big.Int, pubs []*ecdsa.PublicKey, pubSkey st
 		pubShares[i] += utils.ToBase64(bA.Y)
 	}
 
-	fmt.Println(pubShares)
+	//fmt.Println(pubShares)
 
 	d := make([][]byte, len(pubs) + 1)
 	for i := 0; i < len(pubs) + 1; i++ {
