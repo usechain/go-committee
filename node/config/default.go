@@ -24,6 +24,7 @@ import (
 	"github.com/usechain/go-usechain/accounts/keystore"
 	"github.com/usechain/go-committee/contract/contract"
 	"github.com/usechain/go-committee/utils"
+	"github.com/usechain/go-usechain/log"
 )
 
 // Usechain implements the Usechain Committee full node service.
@@ -37,6 +38,39 @@ type Usechain struct {
 	Kstore  			*keystore.KeyStore
 	Workstat 			State
 }
+
+// read the config from profile
+func Init(u *Usechain) error{
+	var err error
+	u.UserProfile, err = ReadProfile()
+	if err != nil {
+		log.Error("Read the committee conf failed", "err", err)
+		return err
+	}
+	u.ManagerContract, err = DefaultCommitteeContract()
+	if err != nil {
+		log.Error("Read the contract conf failed", "err", err)
+		return err
+	}
+	u.IdentityContract, err = DefaultAuthenticationContract()
+	if err != nil {
+		log.Error("Read the identity contract conf failed", "err", err)
+		return err
+	}
+	u.WisperInfo, err = ReadWhisperNode()
+	if err != nil {
+		log.Error("Read the whisper conf failed", "err", err)
+		return err
+	}
+	u.UsedClient, err = ReadUsedConfig()
+	if err != nil {
+		log.Error("Read the used client conf failed", "err", err)
+		return err
+	}
+	u.NodeRPC = usedrpc.NewUseRPC(u.UsedClient.Url)
+	return nil
+}
+
 
 // Structure of a contract
 type contractConfig struct {

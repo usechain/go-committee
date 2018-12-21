@@ -34,8 +34,8 @@ type MsgType int
 const (
 	PolynomialShare MsgType = iota    // value --> 0  PolynomialShares
 	Keyshare						  // value --> 1  Keyshare
-	SubAccountVerifyMsg				  // value --> 2  SubAccount verify message
-	NewCommitteeLogInMsg 			  // value --> 3  New committee connected the network, request for shares
+	NewCommitteeLogInMsg 			  // value --> 2  New committee connected the network, request for shares
+	VerifyShareMsg					  // value --> 3  The signed share for account verifying
 	Unknown
 )
 
@@ -90,67 +90,6 @@ func UnpackPolynomialShare(datas [][]byte) []*ecdsa.PublicKey {
 	return p
 }
 
-//Pack the SubAccountVerifyMsg message
-func PackAccountVerifyShare(certid *big.Int, pubs []*ecdsa.PublicKey, pubSkey string, priv *ecdsa.PrivateKey, id int) []byte{
-	var pubShares []string = make([]string, len(pubs))
-	var bA = new(ecdsa.PublicKey)
-
-	for i, pub := range pubs {
-		bA.X, bA.Y = crypto.S256().ScalarMult(pub.X, pub.Y, priv.D.Bytes())
-
-		pubShares[i] += utils.ToBase64(big.NewInt(int64(id+1)))
-		pubShares[i] += utils.ToBase64(bA.X)
-		pubShares[i] += utils.ToBase64(bA.Y)
-	}
-
-	//fmt.Println(pubShares)
-
-	d := make([][]byte, len(pubs) + 1)
-	for i := 0; i < len(pubs) + 1; i++ {
-		switch i {
-		case 0:
-			d[i] = certid.Bytes()
-			continue
-		case 1:
-			d[i] = []byte(pubSkey)
-			continue
-		default:
-			d[i] = []byte(pubShares[i-2])
-		}
-	}
-
-	msg := 	Msg {
-		ID: time.Now().Nanosecond(),
-		Sender: id,
-		Type: SubAccountVerifyMsg,
-		Data: d,
-	}
-	b, _ := json.Marshal(msg)
-
-	return b
-}
-
-//Unpack the SubAccountVerifyMsg message's payload
-func UnpackAccountVerifyShare(datas [][]byte) (*big.Int, []string, string) {
-	var certID *big.Int
-	var pubSkey string
-	var pubshares = make([]string, len(datas) - 1 )
-
-	for i := range datas {
-		switch i {
-		case 0:
-			certID = big.NewInt(0).SetBytes(datas[i])
-			continue
-		case 1:
-			pubSkey = string(datas[i])
-			continue
-		default:
-			pubshares[i-2] = string(datas[i])
-		}
-	}
-	return certID, pubshares, pubSkey
-}
-
 //Pack the keyPointShare message
 func PackKeyPointShare(p string, id int) []byte{
 	d := make([][]byte, 1)
@@ -178,4 +117,32 @@ func PackCommitteeNewLogin(id int) []byte{
 	b, _ := json.Marshal(msg)
 
 	return b
+}
+
+//Pack the Verify Shares Message
+func PackVerifyShare(A string, bsA *ecdsa.PublicKey, id int) []byte{
+	var s string
+	s += utils.ToBase64(big.NewInt(int64(id + 1)))
+	s += utils.ToBase64(bsA.X)
+	s += utils.ToBase64(bsA.Y)
+
+	d := make([][]byte, 2)
+	d[0] = []byte(A)
+	d[1] = []byte(s)
+
+	msg := 	Msg {
+		ID: time.Now().Nanosecond(),
+		Sender: id,
+		Type: VerifyShareMsg,
+		Data: d,
+	}
+	b, _ := json.Marshal(msg)
+	return b
+}
+
+//Unpack the polynomialShare payload
+func UnpackVerifyShare(datas [][]byte) (A string, bsA string) {
+	A = string(datas[0])
+	bsA = string(datas[1])
+	return
 }

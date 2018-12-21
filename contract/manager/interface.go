@@ -84,5 +84,5 @@ func UploadCommitteePublickey(config *config.Usechain, key *ecdsa.PublicKey) {
 		log.Error("uploadCommitteePubkey",  "err", err)
 		return
 	}
-	fmt.Println(res)
+	log.Debug("the uploadCommitteePubkey transaction", "Hash", res)
 }

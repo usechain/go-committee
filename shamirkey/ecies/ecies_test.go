@@ -42,6 +42,8 @@ import (
 
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-committee/shamirkey/sssa"
+	"crypto/ecdsa"
+	"gitlab.com/go-ethereum/common"
 )
 
 var dumpEnc bool
@@ -321,6 +323,74 @@ func TestSssaEncryptDecrypt2(t *testing.T) {
 
 	fmt.Println(string(pt))
 }
+
+
+// Verify that an encrypted message can be successfully decrypted.
+func TestSssaEncryptDecryptNew53(t *testing.T) {
+	//Committee priv key
+	bInt, _ := big.NewInt(0).SetString("33431506567349998020842321911135580870676597990408321508701492916562825459482", 10)
+	b := ImportECDSA(sssa.GeneratePrivKey(bInt))
+	B := b.PublicKey
+
+	//Customer priv key
+	aInt, _ := big.NewInt(0).SetString("22221506567349786020842321911135580879999997990408321508701492916562825433333", 10)
+	a := ImportECDSA(sssa.GeneratePrivKey(aInt))
+	A := a.PublicKey
+	fmt.Println("A",  common.ToHex(crypto.FromECDSAPub(A.ExportECDSA())))
+
+	//Committee shares
+	//s1 := sssa.NewPrivateShare("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE=j3y3TCc4ilcP2pU32-mrSgIvyFja6U3415JfXGp11dE=")
+	//s2 := sssa.NewPrivateShare("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI=-IygrqFEzTIcRMA1iI-DzJY7TOEa6TuB7-DyGpvGLQc=")
+	//s3 := sssa.NewPrivateShare("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM=hRlMEUs6rb1eHJjZ-G-_GbGCHX2z9Bcyb-RLw54s-3s=")
+	//share1 := ImportNormalPrivateShare(s1)
+	//share2 := ImportNormalPrivateShare(s2)
+	//share3 := ImportNormalPrivateShare(s3)
+
+	//calculate [hash(aB)]G
+	A1 := new(ecdsa.PublicKey)
+	A1.Curve = crypto.S256()
+	A1.X, A1.Y = crypto.S256().ScalarMult(B.X, B.Y, a.D.Bytes())   //A1=[a]B
+	fmt.Println("A", A1)
+	A1Bytes := crypto.Keccak256(crypto.FromECDSAPub(A1))        //hash([a]B)
+	A1.X, A1.Y = crypto.S256().ScalarBaseMult(A1Bytes)   //[hash([a]B)]G
+
+
+	//calculate [hash(bA)]
+	a1temp := new(ecdsa.PrivateKey)
+	a1temp.PublicKey.X, a1temp.PublicKey.Y = crypto.S256().ScalarMult(A.X, A.Y, b.D.Bytes()) //[b]A
+	fmt.Println("a1temp", a1temp)
+	a1Bytes :=  crypto.Keccak256(crypto.FromECDSAPub(&a1temp.PublicKey))
+	a1temp, err := crypto.ToECDSA(a1Bytes)
+	if err != nil {
+		fmt.Println("err", err)
+		return
+	}
+	a1 := ImportECDSA(a1temp)
+	fmt.Println(a1.PublicKey, A1)
+
+	message := []byte("Hello world")
+	//Encryption
+	ct, err := Encrypt(rand.Reader, ImportECDSAPublic(A1), message, nil, nil)
+	if err != nil {
+		fmt.Println(err.Error())
+		t.FailNow()
+	}
+	fmt.Printf("ct: %x\n", ct)
+	//Decryption
+	pt, err := a1.Decrypt(rand.Reader, ct, nil, nil)
+	if err != nil {
+		fmt.Println(err.Error())
+		t.FailNow()
+	}
+	fmt.Println(string(pt))
+
+	//Shamir Decryption
+
+
+	fmt.Println(string(pt))
+}
+
+
 
 func TestDecryptShared2(t *testing.T) {
 	prv, err := GenerateKey(rand.Reader, DefaultCurve, nil)

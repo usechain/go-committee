@@ -22,46 +22,33 @@ import (
 	"sync"
 	"github.com/usechain/go-usechain/cmd/utils"
 	"github.com/usechain/go-usechain/log"
-	"github.com/usechain/go-usedrpc"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-committee/account"
 	"github.com/usechain/go-committee/contract/manager"
 	"github.com/usechain/go-committee/shamirkey"
 	"github.com/usechain/go-committee/node/config"
+	//"github.com/usechain/go-committee/contract/creditTesting"
+	"github.com/usechain/go-committee/contract/creditNew"
 )
 
 var (
 	globalConfig  config.Usechain
+	cache		  *shamirkey.SharePool
+	keypool		  *shamirkey.KeyPool
 	wg			  sync.WaitGroup
 )
 
-//init the committee global config
+// init the committee global config
 func initial() {
 	log.Info("Committee node initializing ......")
 	time.Sleep(time.Second * 5)
 
-	var err error
-	globalConfig.UserProfile, err = config.ReadProfile()
-	if err != nil {
-		utils.Fatalf("Read the committee conf failed, %v", err)
-	}
-	globalConfig.ManagerContract, err = config.DefaultCommitteeContract()
-	if err != nil {
-		utils.Fatalf("Read the contract conf failed, %v", err)
-	}
-	globalConfig.IdentityContract, err = config.DefaultAuthenticationContract()
-	if err != nil {
-		utils.Fatalf("Read the identity contract conf failed, %v", err)
-	}
-	globalConfig.WisperInfo, err = config.ReadWhisperNode()
-	if err != nil {
-		utils.Fatalf("Read the whisper conf failed, %v", err)
-	}
-	globalConfig.UsedClient, err = config.ReadUsedConfig()
-	if err != nil {
-		utils.Fatalf("Read the used client conf failed, %v", err)
-	}
-	globalConfig.NodeRPC = usedrpc.NewUseRPC(globalConfig.UsedClient.Url)
+	//init config
+	config.Init(&globalConfig)
+
+	//init the share pool
+	cache = shamirkey.NewSharePool()
+	keypool = shamirkey.NewKeyPool()
 
 	//Check the committee account format && legality
 	addr := globalConfig.UserProfile.Address
@@ -85,17 +72,18 @@ func initial() {
 			}
 		}
 	}
-
 	log.Info("Usechain Committee Console Initialization Complete")
+	return
 }
 
 //committee work main process
 func run() {
 	// Listening the network msg
 	go func(){
-		shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+		shamirkey.ShamirKeySharesListening(globalConfig.UserProfile, cache, keypool)
 	}()
 
+	// Process handle
 	for {
 		globalConfig.Workstat = config.GetState(globalConfig)
 		log.Debug("The process is in stage", "workStat", globalConfig.Workstat)
@@ -112,11 +100,7 @@ func run() {
 				log.Error("Get certid failed", "err", err)
 			}
 			globalConfig.UserProfile.CommitteeID = id
-			if id == 0 {
-				globalConfig.UserProfile.Role = "Verifier"
-			}else {
-				globalConfig.UserProfile.Role = "Sharer"
-			}
+			globalConfig.UserProfile.Role = "Sharer"
 			config.UpdateProfile(globalConfig.UserProfile)
 
 			//Confirm & upload self asym key
@@ -134,36 +118,32 @@ func run() {
 			go func(){
 				wg.Add(1)
 				defer wg.Done()
-				shamirkey.ShamirKeyShareCheck(&globalConfig)
+				keypool.ShamirKeyShareCheck(&globalConfig)
 			}()
 
 			//Request private share & self part generation
-			shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID)
-			shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
+			shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID, keypool)
+			shamirkey.SendRequestShares(globalConfig.UserProfile.CommitteeID)
 			wg.Wait()
 
 		case config.Verifying:
 			log.Debug("Verifying...")
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
 			shamirkey.InitShamirCommitteeNumber(globalConfig)
+			creditNew.ScanCreditSystemAccount(&globalConfig, cache, shamirkey.CommitteeNodeList, shamirkey.CommitteeMax)
 
-			switch globalConfig.UserProfile.Role {
-			case "Sharer":
-				log.Debug("Sharer start!")
-				shamirkey.AccountShareSharer(&globalConfig)
-			case "Verifier":
-				log.Debug("Verifier start")
-				shamirkey.AccountShareVerifer(&globalConfig)
-			default:
-				log.Debug("Unknown role")
-			}
+			// Verifying
+			go func(){
+				shamirkey.AccountVerifyProcess(&globalConfig, cache)
+			}()
+
+			time.Sleep(time.Second * 10000)
 
 		default:
 			utils.Fatalf("Unknown state")
 		}
 		time.Sleep(time.Second * 30)
 	}
-
 	return
 }
 

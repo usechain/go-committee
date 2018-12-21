@@ -1,10 +1,6 @@
 pragma solidity ^ 0.4.24;
 
-
 contract committeeStorage {
-    // @notice Main Storage
-
-
     // @notice Committee
     uint constant public MAX_COMMITTEEMAN_COUNT = 5;
     uint constant public Requirement = 3;

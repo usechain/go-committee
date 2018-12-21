@@ -19,35 +19,21 @@ package shamirkey
 import (
 	"fmt"
 	"reflect"
-	"crypto/ecdsa"
 	"time"
 	"math/big"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/log"
-	"github.com/usechain/go-committee/utils"
 	"github.com/usechain/go-committee/wnode"
-	"github.com/usechain/go-committee/contract/identity"
 	"github.com/usechain/go-committee/shamirkey/sssa"
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-committee/node/config"
-	"github.com/usechain/go-committee/contract/manager"
 )
 
 var (
-	CommitteeMax = 3				//Just default params, will update from contract when process running
-	CommitteeRequires = 2
-	CommitteeNodeList []string		// CommitteeNodeList[0] is the verifier
-									// Verifier isn't include in CommitteeMax&CommitteeRequires
-									// Verifier got 1st votes in election， are the committees[0] logged in contract
-									// All sharer pack shares send to verifier
-)
-
-var (
-	PolynomialArray [][]*ecdsa.PublicKey = make([][]*ecdsa.PublicKey, CommitteeMax)
-	PrivateKeyShare []string = make([]string, CommitteeMax)
-
-	selfMsgCache []string
+	CommitteeMax = 5				//Just default params, will update from contract when process running
+	CommitteeRequires = 3
+	CommitteeNodeList []string      // All committer
 )
 
 
@@ -101,7 +87,7 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 	log.Debug("CommitteeNodeList", "list", CommitteeNodeList)
 }
 
-func ShamirKeySharesGenerate(id int) {
+func ShamirKeySharesGenerate(id int, keypool *KeyPool) {
 	// committee generate a random number, di
 	priv, err := crypto.GenerateKey()
 	if err != nil {
@@ -110,7 +96,7 @@ func ShamirKeySharesGenerate(id int) {
 	fmt.Println("******priv******", priv.D)
 
 	// generate shares
-	created, _, polynomials, err := sssa.Create256Bit(2,3, priv.D)
+	created, _, polynomials, err := sssa.Create256Bit(CommitteeRequires, CommitteeMax, priv.D)
 	if err != nil {
 		log.Error("err", err)
 		return
@@ -118,47 +104,46 @@ func ShamirKeySharesGenerate(id int) {
 	combined, err := sssa.Combine256Bit(created)
 	if err != nil || combined.Cmp(priv.D) != 0 {
 		log.Error("Fatal: combining: ", err)
+		return
 	}
 
 	polyPublicKeys := sssa.ToECDSAPubArray(polynomials)
 
 	if !sssa.VerifyCreatedAndPolynomial(created, polyPublicKeys) {
 		log.Error("Fatal: verifying: ", err)
+		return
 	}
 
 	// broadcast the shares
 	m := msg.PackPolynomialShare(polyPublicKeys, id)
 	wnode.SendMsg(m, nil)
-	selfMsgCache = append(selfMsgCache, string(m))
+
+	keypool.insertKeyCache(string(m))
 
 	// send f(j) to j committee
 	for i:= range CommitteeNodeList {
-		if i == 0 {
-			continue
-		}
-		m = msg.PackKeyPointShare(created[i-1], id)
+		m = msg.PackKeyPointShare(created[i], id)
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[i])))
-		selfMsgCache = append(selfMsgCache, string(m))
-		fmt.Println("+++++selfMsgCache[sender]", selfMsgCache[i], i)
+		keypool.insertKeyCache(string(m))
 	}
 }
 
 // Broadcast polynomialShare && send f(j) to determined committee
-func ShamirSharesReponse(sender int) {
-	if len(selfMsgCache) != 0 {
-		wnode.SendMsg([]byte(selfMsgCache[0]), nil)
-		wnode.SendMsg([]byte(selfMsgCache[sender]), crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[sender])))
+func ShamirSharesReponse(requester int, keypool *KeyPool) {
+	if keypool.cachelen() > requester + 1 {
+		wnode.SendMsg([]byte(keypool.keycache[0]), nil)
+		wnode.SendMsg([]byte(keypool.keycache[requester+1]), crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[requester])))
 	}
 }
 
 // Broadcast NewCommitteeLogInMsg,  request for sharing keys
-func SendRequesuShares(senderid int) {
+func SendRequestShares(senderid int) {
 	m := msg.PackCommitteeNewLogin(senderid)
 	wnode.SendMsg(m, nil)
 }
 
 // Listening the network msg
-func ShamirKeySharesListening(p *config.CommittteeProfile) {
+func ShamirKeySharesListening(p *config.CommittteeProfile, pool *SharePool, keypool *KeyPool) {
 	log.Debug("Listening...")
 	var input []byte
 
@@ -171,86 +156,29 @@ func ShamirKeySharesListening(p *config.CommittteeProfile) {
 			continue
 		}
 
-		if p.Role == "Verifier" && m.Type != msg.SubAccountVerifyMsg {
-			continue
-		}
-
 		switch m.Type {
 		case msg.PolynomialShare:
 			log.Debug("received polynomial shares")
-			PolynomialArray[m.Sender-1] = msg.UnpackPolynomialShare(m.Data)
+			keypool.insertPolynomialShare(m.Sender, msg.UnpackPolynomialShare(m.Data))
 		case msg.Keyshare:
 			log.Debug("received key shares")
-			PrivateKeyShare[m.Sender-1] = string(m.Data[0])
+			keypool.insertPrivateKeyShare(m.Sender, string(m.Data[0]))
 		case msg.NewCommitteeLogInMsg:
 			log.Debug("detected a new logged in committee")
-			ShamirSharesReponse(m.Sender)
-			//ShamirKeySharesGenerate(p.CommitteeID)
-		case msg.SubAccountVerifyMsg:
-			certID, pubshares, pubSkey := msg.UnpackAccountVerifyShare(m.Data)
-			log.Debug("received a new account verify msg", "certID", certID)
-			SaveVerifyMsg(certID, pubSkey, m.Sender, pubshares, CommitteeRequires)
-		}
-	}
-}
-
-// Check whether get enough shares, and try to generate the multi-sssa private key
-func ShamirKeyShareCheck(usechain *config.Usechain) {
-	successFlag := false
-	for !successFlag {
-		for i := range PolynomialArray {
-			if PrivateKeyShare[i] == "" || len(PolynomialArray[i]) == 0{
-				break
-			}
-
-			if !sssa.VerifyPolynomial(PrivateKeyShare[i], PolynomialArray[i]) {
-				break
-			}
-			if i == len(PolynomialArray) - 1 {
-				successFlag = true
+			ShamirSharesReponse(m.Sender, keypool)
+		case msg.VerifyShareMsg:
+			A, bsA := msg.UnpackVerifyShare(m.Data)
+			log.Debug("received a new shared for account verifying")
+			if IsAccountVerifier(A, CommitteeMax, p.CommitteeID) {
+				pool.SaveAccountSharedCache(A, bsA, m.Sender)
 			}
 		}
-		time.Sleep(time.Second * 1)
-	}
-
-	id := usechain.UserProfile.CommitteeID
-	priv := sssa.GenerateSssaKey(PrivateKeyShare)
-	res := utils.ToBase64(big.NewInt(int64(id)))
-	res += utils.ToBase64(priv)
-
-	//update global config
-	usechain.UserProfile.PrivShares = res
-
-	//update local profile
-	p, _ := config.ReadProfile()
-	p.PrivShares = res
-	config.UpdateProfile(p)
-	log.Warn("key shares generated", "key", res)
-
-	//Upload committee key
-	pubkey := sssa.GenerateCommitteePublicKey(PolynomialArray)
-	manager.UploadCommitteePublickey(usechain, pubkey)
-
-}
-
-//The sharer scan the identity contract, and sign the account's share by its own private key
-func AccountShareSharer(usechain *config.Usechain) {
-	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)
-	if priv == nil {
-		log.Error("No valid private share")
-		return
-	}
-
-	for {
-		time.Sleep(time.Second * 1)
-		identity.ScanIdentityAccount(usechain, priv, CommitteeNodeList)
 	}
 }
 
-//The verifier collect the shares, and verify the account
-func AccountShareVerifer(usechain *config.Usechain) {
+func AccountVerifyProcess(usechain *config.Usechain, pool *SharePool) {
 	for {
-		time.Sleep(time.Second * 5)
-		CheckVerifyMsg(usechain, CommitteeRequires)
+		pool.CheckSharedMsg(usechain, CommitteeRequires)
+		time.Sleep(time.Second * 10)
 	}
 }
