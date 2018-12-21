@@ -6,8 +6,8 @@ contract committeeStorage {
 
 
     // @notice Committee
-    uint constant public MAX_COMMITTEEMAN_COUNT = 4;
-    uint constant public Requirement = 2;
+    uint constant public MAX_COMMITTEEMAN_COUNT = 5;
+    uint constant public Requirement = 3;
 
     uint constant public Election_cycle = 2628000;
     uint constant public Election_duration = 50000;
