@@ -4,21 +4,21 @@ import (
 	"fmt"
 	"math/big"
 	"reflect"
-	//"crypto/ecdsa"
+	"crypto/ecdsa"
 	"github.com/usechain/go-committee/contract/contract"
 	"github.com/usechain/go-committee/node/config"
-	//"github.com/usechain/go-committee/shamirkey/sssa"
-	//"github.com/usechain/go-committee/shamirkey/msg"
-	//"github.com/usechain/go-committee/wnode"
+	"github.com/usechain/go-committee/shamirkey/sssa"
+	"github.com/usechain/go-committee/wnode"
 	"github.com/usechain/go-committee/shamirkey"
-	//"github.com/usechain/go-usechain/common"
+	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/log"
-	//"github.com/usechain/go-usechain/crypto"
+	"github.com/usechain/go-usechain/crypto"
 	"encoding/json"
+	"github.com/usechain/go-committee/shamirkey/msg"
 )
 
-const creditAddr = "0x0b9aE6eAb68AA1c1d5A6018da7ACC43381d976c4"
-const creditABI = "[{\"constant\": true,\"inputs\": [{\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"getHashData\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes\"},{\"name\": \"\",\"type\": \"bytes\"},{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [],\"name\": \"getUnregisterHash\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes32[]\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"}],\"name\": \"getUserInfo\",\"outputs\": [{\"name\": \"\",\"type\": \"address\"},{\"name\": \"\",\"type\": \"string\"},{\"name\": \"\",\"type\": \"bytes32\"},{\"name\": \"\",\"type\": \"bytes32[]\"},{\"name\": \"\",\"type\": \"bool[]\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"hashKey\",\"type\": \"bytes32\"},{\"name\": \"_identity\",\"type\": \"bytes\"},{\"name\": \"_issuer\",\"type\": \"bytes\"}],\"name\": \"addNewIdentity\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": true,\"stateMutability\": \"payable\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"account\",\"type\": \"address\"}],\"name\": \"isSigner\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"\",\"type\": \"uint256\"}],\"name\": \"unregister\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes32\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"}],\"name\": \"verifyBase\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"},{\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"verifyHash\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"}],\"name\": \"getBaseData\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes32\"},{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [],\"name\": \"getUnregisterLen\",\"outputs\": [{\"name\": \"\",\"type\": \"uint256\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [],\"name\": \"renounceSigner\",\"outputs\": [],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"account\",\"type\": \"address\"}],\"name\": \"addSigner\",\"outputs\": [],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"_publicKey\",\"type\": \"string\"},{\"name\": \"_hashKey\",\"type\": \"bytes32\"},{\"name\": \"_identity\",\"type\": \"bytes\"},{\"name\": \"_issuer\",\"type\": \"bytes\"}],\"name\": \"register\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": true,\"stateMutability\": \"payable\",\"type\": \"function\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"addr\",\"type\": \"address\"},{\"indexed\": true,\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"NewUserRegister\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"addr\",\"type\": \"address\"},{\"indexed\": true,\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"NewIdentity\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"account\",\"type\": \"address\"}],\"name\": \"SignerAdded\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"account\",\"type\": \"address\"}],\"name\": \"SignerRemoved\",\"type\": \"event\"}]"
+const creditAddr = "0x71a388a70d183a7e5ae2d3138272f30450082575"
+const creditABI = "[{\"constant\": true,\"inputs\": [{\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"getHashData\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes\"},{\"name\": \"\",\"type\": \"bytes\"},{\"name\": \"\",\"type\": \"bool\"},{\"name\": \"\",\"type\": \"string\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [],\"name\": \"getUnregisterHash\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes32[]\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"}],\"name\": \"getUserInfo\",\"outputs\": [{\"name\": \"\",\"type\": \"address\"},{\"name\": \"\",\"type\": \"string\"},{\"name\": \"\",\"type\": \"bytes32\"},{\"name\": \"\",\"type\": \"bytes32[]\"},{\"name\": \"\",\"type\": \"bool[]\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"hashKey\",\"type\": \"bytes32\"},{\"name\": \"_identity\",\"type\": \"bytes\"},{\"name\": \"_issuer\",\"type\": \"bytes\"}],\"name\": \"addNewIdentity\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": true,\"stateMutability\": \"payable\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"account\",\"type\": \"address\"}],\"name\": \"isSigner\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"\",\"type\": \"uint256\"}],\"name\": \"unregister\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes32\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"}],\"name\": \"verifyBase\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"},{\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"verifyHash\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"}],\"name\": \"getBaseData\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes32\"},{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [],\"name\": \"getUnregisterLen\",\"outputs\": [{\"name\": \"\",\"type\": \"uint256\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [],\"name\": \"renounceSigner\",\"outputs\": [],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"account\",\"type\": \"address\"}],\"name\": \"addSigner\",\"outputs\": [],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"_publicKey\",\"type\": \"string\"},{\"name\": \"_hashKey\",\"type\": \"bytes32\"},{\"name\": \"_identity\",\"type\": \"bytes\"},{\"name\": \"_issuer\",\"type\": \"bytes\"}],\"name\": \"register\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": true,\"stateMutability\": \"payable\",\"type\": \"function\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"addr\",\"type\": \"address\"},{\"indexed\": true,\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"NewUserRegister\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"addr\",\"type\": \"address\"},{\"indexed\": true,\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"NewIdentity\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"account\",\"type\": \"address\"}],\"name\": \"SignerAdded\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"account\",\"type\": \"address\"}],\"name\": \"SignerRemoved\",\"type\": \"event\"}]"
 
 //The struct of the identity
 type identityInfo struct {
@@ -57,7 +57,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *shamirkey.SharePoo
 			log.Error("read unconfirmed address failed",  "err", err)
 			return
 		}
-		fmt.Printf("res[0]: %x\n", res[0])
 		certHash, ok := (res[0]).([32]uint8)
 		if !ok {
 			log.Error("It's not ok for", "type", reflect.TypeOf(res[0]))
@@ -70,13 +69,13 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *shamirkey.SharePoo
 			log.Error("ContractCallParsed failed", "err", err)
 			return
 		}
+		// read identity info
 		identity, ok := (res[0]).([]byte)
 		if !ok {
 			log.Error("It's not ok for", "type", reflect.TypeOf(res[0]))
 			return
 		}
 		log.Debug("get identity string", "string", string(identity))
-		fmt.Println(string(identity))
 
 		m := identityInfo{}
 		err = json.Unmarshal([]byte(identity), &m)
@@ -85,9 +84,16 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *shamirkey.SharePoo
 			return
 		}
 		fmt.Println("m", m)
+		// read requestor's public key
+		pubkey, ok := (res[3]).(string)
+		if !ok {
+			log.Error("It's not ok for", "type", reflect.TypeOf(res[4]))
+			return
+		}
+		log.Debug("get public key", "key", string(pubkey))
 
-
-		///TODO:get the publickey, send
+		sendPublickeyShared(usechain, nodelist, string(pubkey), max)
+		pool.SaveEncryptedData(pubkey, m.Data)
 
 		//issuer, ok := (res[1]).([]byte)
 		//if !ok {
@@ -98,5 +104,24 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *shamirkey.SharePoo
 
 
 		break
+	}
+}
+
+func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int) {
+	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
+	if priv == nil {
+		log.Error("No valid private share")
+		return
+	}
+	publicA := crypto.ToECDSAPub(common.FromHex(A))		//A
+
+	pubkey := new(ecdsa.PublicKey)
+	pubkey.X, pubkey.Y = crypto.S256().ScalarMult(publicA.X, publicA.Y, priv.D.Bytes())   //bsA=[bs]B
+	pubkey.Curve = crypto.S256()
+
+	m := msg.PackVerifyShare(A, pubkey, usechain.UserProfile.CommitteeID)
+
+	for _, id := range shamirkey.AccountVerifier(A, max) {
+		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }
