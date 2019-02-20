@@ -81,17 +81,43 @@ type contractConfig struct {
 }
 
 func DefaultCommitteeContract() (*contract.Contract, error) {
+	crt, err := ReadManagerContractConfig()
+	if err != nil {
+		return nil, err
+	}
+	return contract.New(crt.Name, crt.Description, crt.Address, crt.AbiStr)
+}
+
+func ReadManagerContractConfig() (*contractConfig, error) {
 	cfg, _ := os.Open(utils.DefaultDataDir() + "managerContract.json")
 	defer cfg.Close()
 
 	decoder := json.NewDecoder(cfg)
-	crt := contractConfig{}
-	err := decoder.Decode(&crt)
+	ctr := &contractConfig{}
+	err := decoder.Decode(&ctr)
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
-	return contract.New(crt.Name, crt.Description, crt.Address, crt.AbiStr)
+	return ctr, err
 }
+
+func UpdateManagerContractConfig(ctr *contractConfig) error {
+	b, err := json.Marshal(ctr)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	cfg, _ := os.OpenFile(utils.DefaultDataDir() + "managerContract.json", os.O_RDWR, 0666)
+	defer cfg.Close()
+
+	cfg.Truncate(0)
+	_, err = cfg.WriteAt(b,0)
+	if err != nil {
+		fmt.Println("err", err)
+	}
+	return err
+}
+
+
 
 func DefaultAuthenticationContract() (*contract.Contract, error) {
 	cfg, _ := os.Open(utils.DefaultDataDir() + "identityContract.json")
@@ -215,3 +241,6 @@ func UpdateUsedConfig(used *UsedConfig) error {
 	}
 	return err
 }
+
+
+
