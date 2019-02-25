@@ -23,6 +23,7 @@ import (
 	"encoding/hex"
 	"github.com/usechain/go-committee/shamirkey/sssa"
 	"github.com/usechain/go-usechain/crypto"
+	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/shamirkey/ecies"
 )
@@ -72,6 +73,8 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		hash := crypto.Keccak256(crypto.FromECDSAPub(bA))        //hash([b]A)
 		privECDSA, _ := crypto.ToECDSA(hash)
 		priv := ecies.ImportECDSA(privECDSA)
+
+		fmt.Println("committeePub", common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey)))
 
 		//Decryption
 		ct, _ := hex.DecodeString(self.encryptedSet[A])
