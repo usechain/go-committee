@@ -82,5 +82,9 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			continue
 		}
 		fmt.Println(string(pt))
+
+		//Confirm stat with the contract
+
+
 	}
 }

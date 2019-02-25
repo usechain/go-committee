@@ -177,6 +177,7 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *SharePool, keyp
 	}
 }
 
+// The process for account verify, read the manage contract and handle un-register request
 func AccountVerifyProcess(usechain *config.Usechain, pool *SharePool) {
 	for {
 		pool.CheckSharedMsg(usechain, CommitteeRequires)
