@@ -81,7 +81,6 @@ func (crt *Contract) ContractCall(node *usedrpc.UseRPC, coinbase string, method 
 		return "", err
 	}
 
-	//fmt.Printf("bytes: %x\n", bytes)
 	tx := usedrpc.T {
 		From:  coinbase,
 		To:    crt.Address,
@@ -96,7 +95,6 @@ func (crt *Contract) ContractCall(node *usedrpc.UseRPC, coinbase string, method 
 //Call returns parsed response of method call, based on rpc call
 func (crt *Contract) ContractCallParsed(rpc *usedrpc.UseRPC, coinbase string, methodname string, params ...interface{}) ([]interface{}, error) {
 	res, err := crt.ContractCall(rpc, coinbase, methodname, params...)
-	//fmt.Println(res,err)
 	if err != nil {
 		return nil, err
 	}
@@ -107,7 +105,10 @@ func (crt *Contract) ContractCallParsed(rpc *usedrpc.UseRPC, coinbase string, me
 	}
 	decodeData, err := hex.DecodeString(res[2:])
 	OutDataInterface,err :=method.Outputs.UnpackABI(decodeData)
-	//fmt.Println("InputDataInterface", OutDataInterface)
+	if err != nil {
+		fmt.Println("unpack abi failed:", err)
+		return nil, err
+	}
 
 	return OutDataInterface, nil
 }

@@ -14,12 +14,13 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-committee library. If not, see <http://www.gnu.org/licenses/>.
 
-package shamirkey
+package verify
 
 import (
 	"math/big"
 	"fmt"
 	"github.com/usechain/go-usechain/crypto"
+	"github.com/usechain/go-committee/shamirkey/core"
 )
 
 // Return the verfier id set based on the A address
@@ -27,7 +28,7 @@ func AccountVerifier(A string, max int) (idset []int) {
 	hash := crypto.Keccak256Hash([]byte(A))
 	id := big.NewInt(0).Mod(hash.Big(), big.NewInt(int64(max)))
 
-	for i := 0; i < verifierRequires; i++ {
+	for i := 0; i < core.VerifierRequires; i++ {
 		index := (int(id.Int64()) + i)%max
 		idset = append(idset, index)
 	}

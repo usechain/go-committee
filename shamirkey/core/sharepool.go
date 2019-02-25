@@ -14,21 +14,19 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-committee library. If not, see <http://www.gnu.org/licenses/>.
 
-package shamirkey
+package core
 
 import (
 	"fmt"
 	"crypto/rand"
 	"sync"
-	"encoding/hex"
+	//"encoding/hex"
 	"github.com/usechain/go-committee/shamirkey/sssa"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/shamirkey/ecies"
 )
-
-const verifierRequires = 2
 
 type SharePool struct {
 	shareSet 		 map[string][]string
@@ -77,8 +75,11 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		fmt.Println("committeePub", common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey)))
 
 		//Decryption
-		ct, _ := hex.DecodeString(self.encryptedSet[A])
-		fmt.Printf("ct %x\n", ct)
+		fmt.Printf("encryptedSet %x\n", self.encryptedSet[A])
+
+		//ct, _ := hex.DecodeString(self.encryptedSet[A])
+		ct :=[]byte(self.encryptedSet[A])
+		//fmt.Printf("ct %x\n", ct)
 		pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 		if err != nil {
 			fmt.Println("decryption", err.Error())

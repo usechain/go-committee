@@ -25,17 +25,12 @@ import (
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-committee/wnode"
+	"github.com/usechain/go-committee/shamirkey/core"
 	"github.com/usechain/go-committee/shamirkey/sssa"
 	"github.com/usechain/go-committee/shamirkey/msg"
+	"github.com/usechain/go-committee/shamirkey/verify"
 	"github.com/usechain/go-committee/node/config"
 )
-
-var (
-	CommitteeMax = 5				//Just default params, will update from contract when process running
-	CommitteeRequires = 3
-	CommitteeNodeList []string      // All committer
-)
-
 
 //Read committee config from contract
 func InitShamirCommitteeNumber(config config.Usechain) {
@@ -68,10 +63,10 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 		return
 	}
 
-	CommitteeMax = int(max.Int64())
-	CommitteeRequires = int(min.Int64())
+	core.CommitteeMax = int(max.Int64())
+	core.CommitteeRequires = int(min.Int64())
 
-	for i := 0; i < CommitteeMax; i++ {
+	for i := 0; i < core.CommitteeMax; i++ {
 		//Get committee asym key
 		res, err = ctr.ContractCallParsed(rpc, coinbase, "getCommitteeAsymkey", big.NewInt(int64(i)))
 		if err != nil {
@@ -83,12 +78,12 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 			log.Error("It's not ok for", "type", reflect.TypeOf(res[0]))
 			return
 		}
-		CommitteeNodeList = append(CommitteeNodeList, asym)
+		core.CommitteeNodeList = append(core.CommitteeNodeList, asym)
 	}
-	log.Debug("CommitteeNodeList", "list", CommitteeNodeList)
+	log.Debug("CommitteeNodeList", "list", core.CommitteeNodeList)
 }
 
-func ShamirKeySharesGenerate(id int, keypool *KeyPool) {
+func ShamirKeySharesGenerate(id int, keypool *core.KeyPool) {
 	// committee generate a random number, di
 	priv, err := crypto.GenerateKey()
 	if err != nil {
@@ -97,7 +92,7 @@ func ShamirKeySharesGenerate(id int, keypool *KeyPool) {
 	fmt.Println("******priv******", priv.D)
 
 	// generate shares
-	created, _, polynomials, err := sssa.Create256Bit(CommitteeRequires, CommitteeMax, priv.D)
+	created, _, polynomials, err := sssa.Create256Bit(core.CommitteeRequires, core.CommitteeMax, priv.D)
 	if err != nil {
 		log.Error("err", err)
 		return
@@ -119,21 +114,21 @@ func ShamirKeySharesGenerate(id int, keypool *KeyPool) {
 	m := msg.PackPolynomialShare(polyPublicKeys, id)
 	wnode.SendMsg(m, nil)
 
-	keypool.insertKeyCache(string(m))
+	keypool.InsertKeyCache(string(m))
 
 	// send f(j) to j committee
-	for i:= range CommitteeNodeList {
+	for i:= range core.CommitteeNodeList {
 		m = msg.PackKeyPointShare(created[i], id)
-		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[i])))
-		keypool.insertKeyCache(string(m))
+		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(core.CommitteeNodeList[i])))
+		keypool.InsertKeyCache(string(m))
 	}
 }
 
 // Broadcast polynomialShare && send f(j) to determined committee
-func ShamirSharesReponse(requester int, keypool *KeyPool) {
-	if keypool.cachelen() > requester + 1 {
-		wnode.SendMsg([]byte(keypool.keycache[0]), nil)
-		wnode.SendMsg([]byte(keypool.keycache[requester+1]), crypto.ToECDSAPub(common.FromHex(CommitteeNodeList[requester])))
+func ShamirSharesReponse(requester int, keypool *core.KeyPool) {
+	if keypool.Cachelen() > requester + 1 {
+		wnode.SendMsg([]byte(keypool.KeyCache(0)), nil)
+		wnode.SendMsg([]byte(keypool.KeyCache(requester+1)), crypto.ToECDSAPub(common.FromHex(core.CommitteeNodeList[requester])))
 	}
 }
 
@@ -144,7 +139,7 @@ func SendRequestShares(senderid int) {
 }
 
 // Listening the network msg
-func ShamirKeySharesListening(p *config.CommittteeProfile, pool *SharePool, keypool *KeyPool) {
+func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool, keypool *core.KeyPool) {
 	log.Debug("Listening...")
 	var input []byte
 
@@ -160,17 +155,17 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *SharePool, keyp
 		switch m.Type {
 		case msg.PolynomialShare:
 			log.Debug("received polynomial shares")
-			keypool.insertPolynomialShare(m.Sender, msg.UnpackPolynomialShare(m.Data))
+			keypool.InsertPolynomialShare(m.Sender, msg.UnpackPolynomialShare(m.Data))
 		case msg.Keyshare:
 			log.Debug("received key shares")
-			keypool.insertPrivateKeyShare(m.Sender, string(m.Data[0]))
+			keypool.InsertPrivateKeyShare(m.Sender, string(m.Data[0]))
 		case msg.NewCommitteeLogInMsg:
 			log.Debug("detected a new logged in committee")
 			ShamirSharesReponse(m.Sender, keypool)
 		case msg.VerifyShareMsg:
 			A, bsA := msg.UnpackVerifyShare(m.Data)
 			log.Debug("received a new shared for account verifying")
-			if IsAccountVerifier(A, CommitteeMax, p.CommitteeID) {
+			if verify.IsAccountVerifier(A, core.CommitteeMax, p.CommitteeID) {
 				pool.SaveAccountSharedCache(A, bsA, m.Sender)
 			}
 		}
@@ -178,9 +173,9 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *SharePool, keyp
 }
 
 // The process for account verify, read the manage contract and handle un-register request
-func AccountVerifyProcess(usechain *config.Usechain, pool *SharePool) {
+func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 	for {
-		pool.CheckSharedMsg(usechain, CommitteeRequires)
+		pool.CheckSharedMsg(usechain, core.CommitteeRequires)
 		time.Sleep(time.Second * 10)
 	}
 }

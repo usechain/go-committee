@@ -14,7 +14,7 @@
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-committee library. If not, see <http://www.gnu.org/licenses/>.
 
-package shamirkey
+package core
 
 import (
 	"crypto/ecdsa"
@@ -46,22 +46,26 @@ func point(id int) int {
 	return id + 1
 }
 
-func (self *KeyPool) insertPolynomialShare(id int, keys []*ecdsa.PublicKey) {
+func (self *KeyPool) KeyCache(id int) string{
+	return self.keycache[id]
+}
+
+func (self *KeyPool) InsertPolynomialShare(id int, keys []*ecdsa.PublicKey) {
 	self.polySet[id] = keys
 	return
 }
 
-func (self *KeyPool) insertPrivateKeyShare(id int, key string) {
+func (self *KeyPool) InsertPrivateKeyShare(id int, key string) {
 	self.keySet[id] = key
 	return
 }
 
-func (self *KeyPool) insertKeyCache(cache string) {
+func (self *KeyPool) InsertKeyCache(cache string) {
 	self.keycache = append(self.keycache, cache)
 	return
 }
 
-func (self *KeyPool) cachelen() int{
+func (self *KeyPool) Cachelen() int{
 	return len(self.keycache)
 }
 

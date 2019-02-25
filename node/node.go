@@ -26,6 +26,7 @@ import (
 	"github.com/usechain/go-committee/account"
 	"github.com/usechain/go-committee/contract/manager"
 	"github.com/usechain/go-committee/shamirkey"
+	"github.com/usechain/go-committee/shamirkey/core"
 	"github.com/usechain/go-committee/node/config"
 	//"github.com/usechain/go-committee/contract/creditTesting"
 	"github.com/usechain/go-committee/contract/creditNew"
@@ -33,8 +34,8 @@ import (
 
 var (
 	globalConfig  config.Usechain
-	cache		  *shamirkey.SharePool
-	keypool		  *shamirkey.KeyPool
+	cache		  *core.SharePool
+	keypool		  *core.KeyPool
 	wg			  sync.WaitGroup
 )
 
@@ -47,8 +48,8 @@ func initial() {
 	config.Init(&globalConfig)
 
 	//init the share pool
-	cache = shamirkey.NewSharePool()
-	keypool = shamirkey.NewKeyPool()
+	cache = core.NewSharePool()
+	keypool = core.NewKeyPool()
 
 	//Check the committee account format && legality
 	addr := globalConfig.UserProfile.Address
@@ -130,7 +131,7 @@ func run() {
 			log.Debug("Verifying...")
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
 			shamirkey.InitShamirCommitteeNumber(globalConfig)
-			creditNew.ScanCreditSystemAccount(&globalConfig, cache, shamirkey.CommitteeNodeList, shamirkey.CommitteeMax)
+			creditNew.ScanCreditSystemAccount(&globalConfig, cache, core.CommitteeNodeList, core.CommitteeMax)
 
 			// Verifying
 			go func(){
