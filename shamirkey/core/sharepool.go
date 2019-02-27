@@ -28,6 +28,8 @@ import (
 	"github.com/usechain/go-committee/shamirkey/ecies"
 )
 
+const chanSizeLimit = 10
+
 type SharePool struct {
 	shareSet 		 map[string][]string
 	encryptedSet	 map[string]string
@@ -44,6 +46,7 @@ func NewSharePool() *SharePool{
 		encryptedSet: make(map[string]string),
 		pendingSet: make(map[string]common.Hash),
 		verifiedSet: make(map[string]common.Hash),
+		VerifiedChan:make(chan string, chanSizeLimit),
 	}
 }
 

@@ -190,5 +190,6 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 
 	}
 
+
 }
 
