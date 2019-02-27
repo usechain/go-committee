@@ -101,7 +101,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 		encData, _ := hexutil.Decode(m.Data)
 		sendPublickeyShared(usechain, nodelist, string(pubkey), max)
-		pool.SaveEncryptedData(pubkey, string(encData))
+		pool.SaveEncryptedData(pubkey, common.Hash(certHash), string(encData))
 
 		//issuer, ok := (res[1]).([]byte)
 		//if !ok {
@@ -112,6 +112,23 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 
 		break
+	}
+}
+
+func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, hash common.Hash) {
+	rpc := usechain.NodeRPC
+	coinbase := usechain.UserProfile.Address
+	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
+
+	// verify hash
+	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
+	fmt.Println("res", res)
+	if err != nil {
+		log.Error("contract call", "err", err)
+		return
+	}
+	if res == contract.ContractZero || res == contract.ContractNull {
+		return
 	}
 }
 
@@ -133,3 +150,4 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }
+

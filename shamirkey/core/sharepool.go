@@ -31,6 +31,10 @@ import (
 type SharePool struct {
 	shareSet 		 map[string][]string
 	encryptedSet	 map[string]string
+
+	pendingSet		 map[string]common.Hash
+	verifiedSet		 map[string]common.Hash
+	VerifiedChan	 chan string
 	mu 				 sync.Mutex
 }
 
@@ -41,6 +45,10 @@ func NewSharePool() *SharePool{
 	}
 }
 
+func (self *SharePool)GetVerifiedCertHash(key string) common.Hash {
+	return self.verifiedSet[key]
+}
+
 func (self *SharePool)SaveAccountSharedCache(A string, bsA string, id int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
@@ -48,10 +56,11 @@ func (self *SharePool)SaveAccountSharedCache(A string, bsA string, id int) {
 	fmt.Println(A, self.shareSet[A])
 }
 
-func (self *SharePool)SaveEncryptedData(A string, data string) {
+func (self *SharePool)SaveEncryptedData(A string, h common.Hash, data string) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.encryptedSet[A] = data
+	self.pendingSet[A] = h
 }
 
 func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
@@ -88,7 +97,10 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		fmt.Println(string(pt))
 
 		//Confirm stat with the contract
-
-
+		self.verifiedSet[A] = self.pendingSet[A]
+		self.VerifiedChan <- A
+		delete(self.pendingSet, A)
+		delete(self.encryptedSet, A)
+		delete(self.shareSet, A)
 	}
 }

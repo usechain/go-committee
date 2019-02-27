@@ -19,7 +19,6 @@ package shamirkey
 import (
 	"fmt"
 	"reflect"
-	"time"
 	"math/big"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/common"
@@ -30,6 +29,7 @@ import (
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-committee/shamirkey/verify"
 	"github.com/usechain/go-committee/node/config"
+	"github.com/usechain/go-committee/contract/creditNew"
 )
 
 //Read committee config from contract
@@ -174,8 +174,21 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 
 // The process for account verify, read the manage contract and handle un-register request
 func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
-	for {
+
+	go func() {
 		pool.CheckSharedMsg(usechain, core.CommitteeRequires)
-		time.Sleep(time.Second * 10)
+	}()
+
+	select {
+	case v := <- pool.VerifiedChan:
+		pubkey := crypto.ToECDSAPub(common.FromHex(v))
+		addr := crypto.PubkeyToAddress(*pubkey)
+		certHash := pool.GetVerifiedCertHash(v)
+
+		creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
+		fmt.Println("send success")
+
 	}
+
 }
+
