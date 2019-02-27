@@ -42,6 +42,8 @@ func NewSharePool() *SharePool{
 	return &SharePool{
 		shareSet: make(map[string][]string),
 		encryptedSet: make(map[string]string),
+		pendingSet: make(map[string]common.Hash),
+		verifiedSet: make(map[string]common.Hash),
 	}
 }
 
