@@ -80,6 +80,10 @@ contract committeeStorage {
     function controlVote(bool _flag) public {
         vote_enabled = _flag;
     }
+    
+    function getBlockNumber() public view returns(uint) {
+        return block.number;
+    }
 
     // @notice votes
     function vote(address _candidate)
@@ -87,15 +91,59 @@ contract committeeStorage {
     isVoting
     notVoted
     public
-    {
-        if(rounds[whichRound()].votes[_candidate] == 0) {
-            rounds[whichRound()].candidate.push(_candidate);
+    returns(bool){
+        // which round
+        uint roundIndex = whichRound();
+        
+        if(rounds[roundIndex].votes[_candidate] == 0) {
+            rounds[roundIndex].candidate.push(_candidate);
         }
-        rounds[whichRound()].votes[_candidate]++;
+        rounds[roundIndex].votes[_candidate]++;
 
-        rounds[whichRound()].voted[msg.sender] = true;
+        rounds[roundIndex].voted[msg.sender] = true;
+        
+        // check whether candidate in committee list or not
+        for(uint i=0; i<MAX_COMMITTEEMAN_COUNT;i++) {
+            if(rounds[roundIndex].committes[i].addr == _candidate) {
+                return true;
+            }
+            
+            if(rounds[roundIndex].committes[i].addr == address(0)) {
+                rounds[roundIndex].committes[i].addr = _candidate;
+                return true;
+            }
+        }
+        
+        // sort
+        reSort(roundIndex, _candidate);
+        return true;
     }
+    
+    // do sort at each tx
+    function reSort(uint _roundIndex, address _candidate)
+    internal {
+        // init min
+        uint minIndex = 0;
+        address minCandidate = rounds[_roundIndex].committes[0].addr;
+        uint minVotes = rounds[_roundIndex].votes[minCandidate];
 
+        // reindex min
+        for(uint i=1; i<MAX_COMMITTEEMAN_COUNT;i++){
+            minCandidate = rounds[_roundIndex].committes[i].addr;
+            if(minVotes > rounds[_roundIndex].votes[minCandidate]) {
+                minVotes = rounds[_roundIndex].votes[minCandidate];
+                minIndex = i;
+            }
+        }
+        minCandidate = rounds[_roundIndex].committes[minIndex].addr;
+        // update 
+        if (minVotes < rounds[_roundIndex].votes[_candidate]) {
+            rounds[_roundIndex].committes[minIndex].addr = _candidate;
+            rounds[_roundIndex].committes[minIndex].confirmed = false;
+            rounds[_roundIndex].committes[minIndex].asymPubkey = "";
+        }
+    }
+    
     // @notice get address's votes
     function getVotes(address _candidate)
     public
@@ -123,35 +171,6 @@ contract committeeStorage {
     {
         uint roundIndex = whichRound();
         return rounds[roundIndex].candidate[_index];
-    }
-
-    // @notice calculate votes
-    function calculateVotes()
-    notVoting
-    notSelected
-    public
-    {
-        address[MAX_COMMITTEEMAN_COUNT] storage tempArray;
-        uint roundIndex = whichRound();
-
-        // @notice calculate 5 candidate with most votes
-        for(uint i = 0;i < rounds[roundIndex].candidate.length; i++) {
-        for(uint j = 0; j < MAX_COMMITTEEMAN_COUNT; j++) {
-            if(getVotes(rounds[roundIndex].candidate[i]) > getVotes(tempArray[j])) {
-                for(uint k = MAX_COMMITTEEMAN_COUNT - 1; k > j && i >= MAX_COMMITTEEMAN_COUNT; k--) {
-                    tempArray[k] = tempArray[k-1];
-                }
-                tempArray[j] = rounds[roundIndex].candidate[i];
-                break;
-            }
-        }
-    }
-
-        // @notice write the candidate into committes tempArray
-        for(uint m = 0; m < MAX_COMMITTEEMAN_COUNT; m++) {
-        rounds[roundIndex].committes[m].addr = tempArray[m];
-    }
-        rounds[roundIndex].selected = true;
     }
 
     /****************committes*********************/
@@ -265,7 +284,7 @@ contract committeeStorage {
     public
     {
         uint roundIndex = whichRound();
-        if(keccak256(rounds[roundIndex].committeePublicKey_candidate) != keccak256(_pubkey)) {
+        if(keccak256(abi.encodePacked(rounds[roundIndex].committeePublicKey_candidate)) != keccak256(abi.encodePacked(_pubkey))) {
             return;
         }
         rounds[roundIndex].committeePublicKey_candidate = _pubkey;
@@ -286,6 +305,4 @@ contract committeeStorage {
         uint roundIndex = whichRound();
         return rounds[roundIndex].committeePublicKey;
     }
-
-
 }
