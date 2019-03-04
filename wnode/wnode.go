@@ -704,7 +704,7 @@ func messageLoop() {
 			for _, msg := range messages {
 				reportedOnce := false
 				if !*fileExMode && len(msg.Payload) <= 2048 {
-					//printMessageInfo(msg)
+					printMessageInfo(msg)
 					ChanWhisper <- msg.Payload
 					reportedOnce = true
 				}

@@ -17,7 +17,6 @@
 package node
 
 import (
-	"fmt"
 	"time"
 	"sync"
 	"github.com/usechain/go-usechain/cmd/utils"
@@ -64,7 +63,6 @@ func initial() {
 
 		log.Warn("Please unlock the committee account")
 		log.Warn("Enter \"committee.unlock \"passwd\"\"")
-		fmt.Print("=====> ")
 		select {
 		case passwd := <- account.CommitteePasswd:
 			err = globalConfig.Kstore.TimedUnlock(signer, passwd, 0)
@@ -137,8 +135,6 @@ func run() {
 			go func(){
 				shamirkey.AccountVerifyProcess(&globalConfig, cache)
 			}()
-
-			time.Sleep(time.Second * 10000)
 
 		default:
 			utils.Fatalf("Unknown state")

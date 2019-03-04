@@ -70,7 +70,8 @@ func ConfirmAndKeyUpload(config config.Usechain) {
 		log.Error("confirmAndKeyUpload",  "err", err)
 		return
 	}
-	fmt.Println(res)
+	log.Info("the confirmAndKeyUpload transaction", "Hash", res)
+
 }
 
 func UploadCommitteePublickey(config *config.Usechain, key *ecdsa.PublicKey) {
@@ -84,5 +85,5 @@ func UploadCommitteePublickey(config *config.Usechain, key *ecdsa.PublicKey) {
 		log.Error("uploadCommitteePubkey",  "err", err)
 		return
 	}
-	log.Debug("the uploadCommitteePubkey transaction", "Hash", res)
+	log.Info("the uploadCommitteePubkey transaction", "Hash", res)
 }
