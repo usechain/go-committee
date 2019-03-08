@@ -17,15 +17,18 @@
 package core
 
 import (
+	"os"
 	"errors"
 	"math"
 	"math/big"
 
 	"github.com/usechain/go-usechain/common"
+	"github.com/usechain/go-usechain/core/state"
 	"github.com/usechain/go-usechain/core/vm"
-	"github.com/usechain/go-usechain/log"
-	"github.com/usechain/go-usechain/params"
 	"github.com/usechain/go-usechain/core/types"
+	"github.com/usechain/go-usechain/params"
+	"github.com/usechain/go-usechain/log"
+	"github.com/usechain/go-usechain/contracts/authentication"
 )
 
 var (
@@ -63,6 +66,8 @@ type StateTransition struct {
 
 // Message represents a message sent to a contract.
 type Message interface {
+	Flag() uint8
+
 	From() common.Address
 	//FromFrontier() (common.Address, error)
 	To() *common.Address
@@ -205,7 +210,6 @@ func (st *StateTransition) preCheck() error {
 	return st.buyGas()
 }
 
-
 // TransitionDb will transition the state by applying the current message and
 // returning the result including the the used gas. It returns an error if it
 // failed. An error indicates a consensus issue.
@@ -215,19 +219,16 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	}
 	msg := st.msg
 	sender := st.from() // err checked in preCheck
-
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
 	contractCreation := msg.To() == nil
 
-	switch contractCreation {
-	case true:
-		//if common.ToHex(addr[:]) != "0x6102d428c9aee1ae53d1ba77c83e78be4da1b95a" {
-		//	if st.state.CheckAddrAuthenticateStat(msg.From()) == 0 {
-		//		return nil, 0, false, vm.ErrIllegalAddress
-		//	}
-		//}
-
-	case false:
+	db, ok := (st.state).(*state.StateDB)
+	if !ok {
+		log.Error("vm state assert failed")
+		os.Exit(1)
+	}
+	// If it's transaction about authentication
+	if !contractCreation {
 		transactionFormat := msgToTransaction(msg)
 
 		if transactionFormat.IsAuthentication() {
@@ -236,21 +237,15 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 				return nil, 0, false, vm.ErrInvalidAuthenticationsig
 			}
 		} else if transactionFormat.IsMainAuthentication() {
-			err = st.state.CheckMultiAccountSig(transactionFormat, common.MainAddress, msg.From())
+			err = authentication.CheckMultiAccountSig(db, transactionFormat, common.MainAddress, msg.From())
 			if err != nil {
 				return nil, 0, false, vm.ErrInvalidAuthenticationsig
 			}
 		} else if transactionFormat.IsSubAuthentication() {
-			err = st.state.CheckMultiAccountSig(transactionFormat, common.MainAddress, msg.From())
+			err = authentication.CheckMultiAccountSig(db, transactionFormat, common.SubAddress, msg.From())
 			if err != nil {
 				return nil, 0, false, vm.ErrInvalidAuthenticationsig
 			}
-		} else {
-			//if common.ToHex(addr[:]) != "0x6102d428c9aee1ae53d1ba77c83e78be4da1b95a" {
-			//	if st.state.CheckAddrAuthenticateStat(msg.From()) == 0 {
-			//		return nil, 0, false, vm.ErrIllegalAddress
-			//	}
-			//}
 		}
 	}
 
@@ -259,8 +254,12 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	if err != nil {
 		return nil, 0, false, err
 	}
-	if err = st.useGas(gas); err != nil {
-		return nil, 0, false, err
+
+	// If it's vote transaction
+	if msg.Flag() != 1 {
+		if err = st.useGas(gas); err != nil {
+			return nil, 0, false, err
+		}
 	}
 
 	var (

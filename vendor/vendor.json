@@ -85,6 +85,20 @@
 			"revisionTime": "2018-11-21T08:33:29Z"
 		},
 		{
+			"checksumSHA1": "jApyj1RZcbxA/dZvpezIE253w0c=",
+			"origin": "github.com/usechain/go-usechain/vendor/github.com/fjl/memsize",
+			"path": "github.com/fjl/memsize",
+			"revision": "0660ef52d5efbdc4866725bce683a4a4885960a7",
+			"revisionTime": "2019-02-25T09:35:22Z"
+		},
+		{
+			"checksumSHA1": "x6BqSM9KFP1a1O5/RqKFtRHf5A0=",
+			"origin": "github.com/usechain/go-usechain/vendor/github.com/fjl/memsize/memsizeui",
+			"path": "github.com/fjl/memsize/memsizeui",
+			"revision": "0660ef52d5efbdc4866725bce683a4a4885960a7",
+			"revisionTime": "2019-02-25T09:35:22Z"
+		},
+		{
 			"checksumSHA1": "gxV/cPPLkByTdY8y172t7v4qcZA=",
 			"origin": "github.com/usechain/go-usechain/vendor/github.com/go-ole/go-ole",
 			"path": "github.com/go-ole/go-ole",
@@ -540,10 +554,22 @@
 			"revisionTime": "2018-11-21T08:33:29Z"
 		},
 		{
+			"checksumSHA1": "TtSdggal1lD5FTMZsPP5FFcpvFM=",
+			"path": "github.com/usechain/go-usechain/contracts/manager",
+			"revision": "0660ef52d5efbdc4866725bce683a4a4885960a7",
+			"revisionTime": "2019-02-25T09:35:22Z"
+		},
+		{
 			"checksumSHA1": "ZQAPSfankzEBJNJSCgj2l59dN28=",
 			"path": "github.com/usechain/go-usechain/contracts/minerlist",
 			"revision": "aa787640226f44bb07c4ef7384332e3c1b924d36",
 			"revisionTime": "2018-11-21T08:33:29Z"
+		},
+		{
+			"checksumSHA1": "JWeUvEjwMWm4kGIMGqDUqNi/7Yo=",
+			"path": "github.com/usechain/go-usechain/contracts/utils",
+			"revision": "0660ef52d5efbdc4866725bce683a4a4885960a7",
+			"revisionTime": "2019-02-25T09:35:22Z"
 		},
 		{
 			"checksumSHA1": "I6K3QEFXl0oQpgkSI9xq7stmCQU=",
@@ -840,6 +866,12 @@
 			"revisionTime": "2018-11-21T08:33:29Z"
 		},
 		{
+			"checksumSHA1": "l03kgImxuM+o/xS+10jt8Ntf+pM=",
+			"path": "github.com/usechain/go-usechain/vote",
+			"revision": "0660ef52d5efbdc4866725bce683a4a4885960a7",
+			"revisionTime": "2019-02-25T09:35:22Z"
+		},
+		{
 			"checksumSHA1": "hwQO8sVxc6UexIfks35W0HknUIk=",
 			"path": "github.com/usechain/go-usechain/whisper/mailserver",
 			"revision": "aa787640226f44bb07c4ef7384332e3c1b924d36",
@@ -1102,5 +1134,5 @@
 			"revisionTime": "2018-11-21T08:33:29Z"
 		}
 	],
-	"rootPath": "github.com/usechain/whisperCommittee"
+	"rootPath": "github.com/usechain/go-committee"
 }

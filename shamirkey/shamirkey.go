@@ -39,27 +39,27 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 	coinbase := config.UserProfile.Address
 
 	//Check whether a real committee
-	res, err := ctr.ContractCallParsed(rpc, coinbase, "MAX_COMMITTEEMAN_COUNT")
-	fmt.Println("res", res)
+	MAX_COMMITTEEMAN_COUNT, err := ctr.ContractCallParsed(rpc, coinbase, "MAX_COMMITTEEMAN_COUNT")
+	fmt.Println("MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT)
 	if err != nil {
 		fmt.Println("read MAX_COMMITTEEMAN_COUNT failed",  err)
 		return
 	}
-	max, ok := (res[0]).(*big.Int)
+	max, ok := (MAX_COMMITTEEMAN_COUNT[0]).(*big.Int)
 	if !ok {
-		log.Error("It's not ok for", "type", reflect.TypeOf(res[0]))
+		log.Error("It's not ok for", "type", reflect.TypeOf(MAX_COMMITTEEMAN_COUNT[0]))
 		return
 	}
 
 	//Check whether a real committee
-	res, err = ctr.ContractCallParsed(rpc, coinbase, "Requirement")
+	Requirement, err := ctr.ContractCallParsed(rpc, coinbase, "Requirement")
 	if err != nil {
 		fmt.Println("read Requirement failed",  err)
 		return
 	}
-	min, ok := (res[0]).(*big.Int)
+	min, ok := (Requirement[0]).(*big.Int)
 	if !ok {
-		log.Error("It's not ok for", "type", reflect.TypeOf(res[0]))
+		log.Error("It's not ok for", "type", reflect.TypeOf(Requirement[0]))
 		return
 	}
 
@@ -68,14 +68,14 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 
 	for i := 0; i < core.CommitteeMax; i++ {
 		//Get committee asym key
-		res, err = ctr.ContractCallParsed(rpc, coinbase, "getCommitteeAsymkey", big.NewInt(int64(i)))
+		getCommitteeAsymkey, err := ctr.ContractCallParsed(rpc, coinbase, "getCommitteeAsymkey", big.NewInt(int64(i)))
 		if err != nil {
 			fmt.Println("read committee failed",  err)
 			return
 		}
-		asym, ok := (res[0]).(string)
+		asym, ok := (getCommitteeAsymkey[0]).(string)
 		if !ok {
-			log.Error("It's not ok for", "type", reflect.TypeOf(res[0]))
+			log.Error("It's not ok for", "type", reflect.TypeOf(getCommitteeAsymkey[0]))
 			return
 		}
 		core.CommitteeNodeList = append(core.CommitteeNodeList, asym)
