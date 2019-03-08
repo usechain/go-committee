@@ -148,7 +148,7 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 
 		m, err := msg.UnpackMsg(input)
 		if err != nil {
-			fmt.Println("Unknown msg type")
+			fmt.Println("Unknown msg type: ", err)
 			continue
 		}
 

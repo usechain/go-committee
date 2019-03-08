@@ -41,42 +41,45 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
 
 	// get unconfirmed address number
-	res, err := creditCTR.ContractCall(rpc, coinbase, "getUnregisterLen")
-	fmt.Println("res", res)
+	UnregisterLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnregisterLen")
+	log.Info("Read contract UnregisterLen", "length", UnregisterLen)
 	if err != nil {
 		log.Error("contract call", "err", err)
 		return
 	}
-	if res == contract.ContractZero || res == contract.ContractNull{
+	if UnregisterLen == contract.ContractZero || UnregisterLen == contract.ContractNull{
 		return
 	}
 
-	unconfirmedCount, _ := big.NewInt(0).SetString(res[2:], 16)
-	//log.Debug("unconfirmedcount", "count", unconfirmedCount)
+	unconfirmedCount, _ := big.NewInt(0).SetString(UnregisterLen[2:], 16)
+	log.Debug("unconfirmedcount", "count", unconfirmedCount)
 	for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 		// get unconfirmed address index
-		res, err := creditCTR.ContractCallParsed(rpc, coinbase,"unregister", big.NewInt(i))
-		if err != nil || len(res) == 0{
+		unregister, err := creditCTR.ContractCallParsed(rpc, coinbase,"unregister", big.NewInt(i))
+		if err != nil || len(unregister) == 0{
 			log.Error("read unconfirmed address failed",  "err", err)
 			return
 		}
-		certHash, ok := (res[0]).([32]uint8)
+		certHash, ok := (unregister[0]).([32]uint8)
 		if !ok {
-			log.Error("It's not ok for", "type", reflect.TypeOf(res[0]))
+			log.Error("It's not ok for", "type", reflect.TypeOf(unregister[0]))
 			return
 		}
 
 		// get encrypted string based on address as index
-		fmt.Printf("certHash %x\n", certHash)
-		res, err = creditCTR.ContractCallParsed(rpc, coinbase,"getHashData", certHash)
+		log.Info("certHash %x\n", certHash)
+		getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase,"getHashData", certHash)
+		
 		if err != nil {
 			log.Error("ContractCallParsed failed", "err", err)
 			return
 		}
+		log.Info("getHashData", "userHashData", getHashData)
+
 		// read identity info
-		identity, ok := (res[0]).([]byte)
+		identity, ok := (getHashData[0]).([]byte)
 		if !ok {
-			log.Error("It's not ok for", "type", reflect.TypeOf(res[0]))
+			log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[0]))
 			return
 		}
 		log.Debug("get identity string", "string", string(identity))
@@ -87,10 +90,11 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			log.Debug("Unmarshal failed")
 			return
 		}
+
 		// read requestor's public key
-		pubkey, ok := (res[3]).(string)
+		pubkey, ok := (getHashData[3]).(string)
 		if !ok {
-			log.Error("It's not ok for", "type", reflect.TypeOf(res[3]))
+			log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[3]))
 			return
 		}
 		log.Debug("get public key", "key", string(pubkey))
@@ -110,7 +114,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 		//}
 		//log.Debug("get issuer string", "string", string(issuer))
 
-
 		break
 	}
 }
@@ -122,7 +125,7 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 
 	// verify hash
 	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	fmt.Println("res", res)
+	log.Info("verifyHash transaction", "hash", res)
 	if err != nil {
 		log.Error("contract call", "err", err)
 		return
