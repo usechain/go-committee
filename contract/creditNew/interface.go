@@ -1,7 +1,6 @@
 package creditNew
 
 import (
-	"fmt"
 	"math/big"
 	"reflect"
 	"crypto/ecdsa"
@@ -19,7 +18,7 @@ import (
 	"github.com/usechain/go-usechain/common/hexutil"
 )
 
-const creditAddr = "0x70C7aB97bb35f46C3867A7fA63A63Cdce81C05C0"
+const creditAddr = "0x488dF680367355F7EEc5bCEf204da5BbA65Eaae0"
 const creditABI = "[{\"constant\": true,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"}],\"name\": \"getBaseData\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes32\"},{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"getHashData\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes\"},{\"name\": \"\",\"type\": \"bytes\"},{\"name\": \"\",\"type\": \"bool\"},{\"name\": \"\",\"type\": \"string\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [],\"name\": \"getUnregisterHash\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes32[]\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [],\"name\": \"getUnregisterLen\",\"outputs\": [{\"name\": \"\",\"type\": \"uint256\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"}],\"name\": \"getUserInfo\",\"outputs\": [{\"name\": \"\",\"type\": \"address\"},{\"name\": \"\",\"type\": \"string\"},{\"name\": \"\",\"type\": \"bytes32\"},{\"name\": \"\",\"type\": \"bytes32[]\"},{\"name\": \"\",\"type\": \"bool[]\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"account\",\"type\": \"address\"}],\"name\": \"isSigner\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"\",\"type\": \"uint256\"}],\"name\": \"unregister\",\"outputs\": [{\"name\": \"\",\"type\": \"bytes32\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"},{\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"verifyHash\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"addr\",\"type\": \"address\"}],\"name\": \"verifyBase\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [],\"name\": \"renounceSigner\",\"outputs\": [],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"_publicKey\",\"type\": \"string\"},{\"name\": \"_hashKey\",\"type\": \"bytes32\"},{\"name\": \"_identity\",\"type\": \"bytes\"},{\"name\": \"_issuer\",\"type\": \"bytes\"}],\"name\": \"register\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": true,\"stateMutability\": \"payable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"account\",\"type\": \"address\"}],\"name\": \"addSigner\",\"outputs\": [],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"hashKey\",\"type\": \"bytes32\"},{\"name\": \"_identity\",\"type\": \"bytes\"},{\"name\": \"_issuer\",\"type\": \"bytes\"}],\"name\": \"addNewIdentity\",\"outputs\": [{\"name\": \"\",\"type\": \"bool\"}],\"payable\": true,\"stateMutability\": \"payable\",\"type\": \"function\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"account\",\"type\": \"address\"}],\"name\": \"SignerRemoved\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"account\",\"type\": \"address\"}],\"name\": \"SignerAdded\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"addr\",\"type\": \"address\"},{\"indexed\": true,\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"NewUserRegister\",\"type\": \"event\"},{\"anonymous\": false,\"inputs\": [{\"indexed\": true,\"name\": \"addr\",\"type\": \"address\"},{\"indexed\": true,\"name\": \"hash\",\"type\": \"bytes32\"}],\"name\": \"NewIdentity\",\"type\": \"event\"}]"
 
 //The struct of the identity
@@ -52,12 +51,12 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 	}
 
 	unconfirmedCount, _ := big.NewInt(0).SetString(UnregisterLen[2:], 16)
-	log.Debug("unconfirmedcount", "count", unconfirmedCount)
+	log.Info("Get unconfirmed register count", "count", unconfirmedCount)
 	for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 		// get unconfirmed address index
 		unregister, err := creditCTR.ContractCallParsed(rpc, coinbase,"unregister", big.NewInt(i))
 		if err != nil || len(unregister) == 0{
-			log.Error("read unconfirmed address failed",  "err", err)
+			log.Error("Read unconfirmed address failed",  "err", err)
 			return
 		}
 		certHash, ok := (unregister[0]).([32]uint8)
@@ -69,12 +68,11 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 		// get encrypted string based on address as index
 		log.Info("certHash %x\n", certHash)
 		getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase,"getHashData", certHash)
-		
+
 		if err != nil {
 			log.Error("ContractCallParsed failed", "err", err)
 			return
 		}
-		log.Info("getHashData", "userHashData", getHashData)
 
 		// read identity info
 		identity, ok := (getHashData[0]).([]byte)
@@ -82,7 +80,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[0]))
 			return
 		}
-		log.Debug("get identity string", "string", string(identity))
+		log.Info("Get identity string", "string", string(identity))
 
 		m := identityInfo{}
 		err = json.Unmarshal([]byte(identity), &m)
@@ -97,8 +95,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[3]))
 			return
 		}
-		log.Debug("get public key", "key", string(pubkey))
-		fmt.Println("m.data:", m.Data)
+		log.Debug("Get public key", "key", string(pubkey))
 		//testData := "0x044da1f0e4bd859532f588372d2b63921fae49eaed12d5254f071993700c1835f1c6bcb351d3d042cd99dfeb30114be45272ec2167b49914669c42276bb58da91a59c6c4d5f3fc8e004dbca0613416a5669626987d9ba658d3cfb1294063264799d40c644e41736c1bb7e64530771f7af8521b67c6e03470253794dd3806587f083326da302f3725f0963962094beb20ca598b13a81823682c2ceb0cc4157c01091d9653900d6f940768cf8110c6c9293bd812420833402686cff61322421d3cbe78dd64a427ca8dc7a5dbf126d05abee2"
 		//testM, _ := hexutil.Decode(testData)
 		//fmt.Printf("m.data: %x\n", testM)
