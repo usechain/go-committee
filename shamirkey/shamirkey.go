@@ -78,6 +78,8 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 			log.Error("It's not ok for", "type", reflect.TypeOf(getCommitteeAsymkey[0]))
 			return
 		}
+
+		// Prevent duplicate additions
 		core.CommitteeNodeList = append(core.CommitteeNodeList, asym)
 	}
 	log.Debug("CommitteeNodeList", "list", core.CommitteeNodeList)
@@ -189,7 +191,5 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 		fmt.Println("send success")
 
 	}
-
-
 }
 

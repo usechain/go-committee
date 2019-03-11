@@ -16,6 +16,7 @@ import (
 	"encoding/json"
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-usechain/common/hexutil"
+	"fmt"
 )
 
 const creditAddr = "0x488dF680367355F7EEc5bCEf204da5BbA65Eaae0"
@@ -52,66 +53,89 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 	unconfirmedCount, _ := big.NewInt(0).SetString(UnregisterLen[2:], 16)
 	log.Info("Get unconfirmed register count", "count", unconfirmedCount)
-	for i := int64(0); i < unconfirmedCount.Int64(); i++ {
-		// get unconfirmed address index
-		unregister, err := creditCTR.ContractCallParsed(rpc, coinbase,"unregister", big.NewInt(i))
-		if err != nil || len(unregister) == 0{
-			log.Error("Read unconfirmed address failed",  "err", err)
-			return
+
+	certHashAddtoSet := NewSet()
+	processScan := func() {
+		for i := int64(0); i < unconfirmedCount.Int64(); i++ {
+			// get unconfirmed address index
+			unregister, err := creditCTR.ContractCallParsed(rpc, coinbase, "unregister", big.NewInt(i))
+			if err != nil || len(unregister) == 0 {
+				log.Error("Read unconfirmed address failed", "err", err)
+				return
+			}
+			certHash, ok := (unregister[0]).([32]uint8)
+			if !ok {
+				log.Error("It's not ok for", "type", reflect.TypeOf(unregister[0]))
+				return
+			}
+
+			certHashToString := string(certHash[:])
+			if certHashAddtoSet.Has(certHashToString) {
+				fmt.Println("certHash already executed")
+				continue
+			} else {
+				certHashAddtoSet.Add(certHashToString)
+				// get encrypted string based on address as index
+				fmt.Printf("certHash %x\n", certHash)
+				getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase, "getHashData", certHash)
+
+				if err != nil {
+					log.Error("ContractCallParsed failed", "err", err)
+					return
+				}
+
+				// read identity info
+				identity, ok := (getHashData[0]).([]byte)
+				if !ok {
+					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[0]))
+					return
+				}
+				log.Info("Get identity string", "string", string(identity))
+
+				m := identityInfo{}
+				err = json.Unmarshal([]byte(identity), &m)
+				if err != nil {
+					log.Debug("Unmarshal failed")
+					return
+				}
+
+				// read requestor's public key
+				pubkey, ok := (getHashData[3]).(string)
+				if !ok {
+					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[3]))
+					return
+				}
+				log.Debug("Get public key", "key", string(pubkey))
+				//testData := "0x044da1f0e4bd859532f588372d2b63921fae49eaed12d5254f071993700c1835f1c6bcb351d3d042cd99dfeb30114be45272ec2167b49914669c42276bb58da91a59c6c4d5f3fc8e004dbca0613416a5669626987d9ba658d3cfb1294063264799d40c644e41736c1bb7e64530771f7af8521b67c6e03470253794dd3806587f083326da302f3725f0963962094beb20ca598b13a81823682c2ceb0cc4157c01091d9653900d6f940768cf8110c6c9293bd812420833402686cff61322421d3cbe78dd64a427ca8dc7a5dbf126d05abee2"
+				//testM, _ := hexutil.Decode(testData)
+				//fmt.Printf("m.data: %x\n", testM)
+
+				encData, _ := hexutil.Decode(m.Data)
+				sendPublickeyShared(usechain, nodelist, string(pubkey), max)
+				pool.SaveEncryptedData(pubkey, common.Hash(certHash), string(encData))
+
+				//issuer, ok := (res[1]).([]byte)
+				//if !ok {
+				//	log.Error("It's not ok for", "type", reflect.TypeOf(res[1]))
+				//	return
+				//}
+				//log.Debug("get issuer string", "string", string(issuer))
+			}
+			}
+	}
+
+	ethQuitCh := make(chan struct{}, 1)
+	loop := true
+	for loop {
+		select {
+		case _,isClose := <- ethQuitCh:
+			if !isClose {
+				fmt.Println("[SCAN CLOSED] ScanCreditSystemAccount thread exitCh!")
+				loop = false
+			}
+		default:
+			processScan()
 		}
-		certHash, ok := (unregister[0]).([32]uint8)
-		if !ok {
-			log.Error("It's not ok for", "type", reflect.TypeOf(unregister[0]))
-			return
-		}
-
-		// get encrypted string based on address as index
-		log.Info("certHash %x\n", certHash)
-		getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase,"getHashData", certHash)
-
-		if err != nil {
-			log.Error("ContractCallParsed failed", "err", err)
-			return
-		}
-
-		// read identity info
-		identity, ok := (getHashData[0]).([]byte)
-		if !ok {
-			log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[0]))
-			return
-		}
-		log.Info("Get identity string", "string", string(identity))
-
-		m := identityInfo{}
-		err = json.Unmarshal([]byte(identity), &m)
-		if err != nil{
-			log.Debug("Unmarshal failed")
-			return
-		}
-
-		// read requestor's public key
-		pubkey, ok := (getHashData[3]).(string)
-		if !ok {
-			log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[3]))
-			return
-		}
-		log.Debug("Get public key", "key", string(pubkey))
-		//testData := "0x044da1f0e4bd859532f588372d2b63921fae49eaed12d5254f071993700c1835f1c6bcb351d3d042cd99dfeb30114be45272ec2167b49914669c42276bb58da91a59c6c4d5f3fc8e004dbca0613416a5669626987d9ba658d3cfb1294063264799d40c644e41736c1bb7e64530771f7af8521b67c6e03470253794dd3806587f083326da302f3725f0963962094beb20ca598b13a81823682c2ceb0cc4157c01091d9653900d6f940768cf8110c6c9293bd812420833402686cff61322421d3cbe78dd64a427ca8dc7a5dbf126d05abee2"
-		//testM, _ := hexutil.Decode(testData)
-		//fmt.Printf("m.data: %x\n", testM)
-
-		encData, _ := hexutil.Decode(m.Data)
-		sendPublickeyShared(usechain, nodelist, string(pubkey), max)
-		pool.SaveEncryptedData(pubkey, common.Hash(certHash), string(encData))
-
-		//issuer, ok := (res[1]).([]byte)
-		//if !ok {
-		//	log.Error("It's not ok for", "type", reflect.TypeOf(res[1]))
-		//	return
-		//}
-		//log.Debug("get issuer string", "string", string(issuer))
-
-		break
 	}
 }
 
