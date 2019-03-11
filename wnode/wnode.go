@@ -47,6 +47,7 @@ import (
 	whisper "github.com/usechain/go-usechain/whisper/whisperv6"
 	"golang.org/x/crypto/pbkdf2"
 	"github.com/usechain/go-committee/node/config"
+	"encoding/json"
 )
 
 const quitCommand = "~Q"
@@ -647,6 +648,11 @@ func SendMsg(payload []byte, destpub *ecdsa.PublicKey) common.Hash {
 		return common.Hash{}
 	}
 
+	d, err := json.Marshal(&envelope)
+	if err != nil {
+		fmt. Println ( "error:" , err )
+	}
+	log.Info("sendMsg to other committee", "message", string(d))
 	return envelope.Hash()
 }
 

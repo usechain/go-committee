@@ -75,7 +75,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			} else {
 				certHashAddtoSet.Add(certHashToString)
 				// get encrypted string based on address as index
-				fmt.Printf("certHash %x\n", certHash)
+				log.Info("certHash", "certHash", certHashToString)
 				getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase, "getHashData", certHash)
 
 				if err != nil {
@@ -170,6 +170,7 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 	m := msg.PackVerifyShare(A, pubkey, usechain.UserProfile.CommitteeID)
 
 	for _, id := range verify.AccountVerifier(A, max) {
+		log.Info("sendMsg to other committee", "id", id, "node", common.FromHex(nodelist[id]))
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }
