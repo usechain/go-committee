@@ -59,7 +59,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 		for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 			// get unconfirmed address index
 			unregister, err := creditCTR.ContractCallParsed(rpc, coinbase, "unregister", big.NewInt(i))
-			if err != nil || len(unregister) == 0 {
+			if err != nil && len(unregister) == 0 {
 				log.Error("Read unconfirmed address failed", "err", err)
 				return
 			}
@@ -133,7 +133,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				loop = false
 			}
 		default:
-			go processScan()
+			processScan()
 		}
 	}
 }
