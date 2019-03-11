@@ -71,7 +71,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 			certHashToString := string(certHash[:])
 			if certHashAddtoSet.Has(certHashToString) {
-				fmt.Println("certHash already executed")
 				continue
 			} else {
 				certHashAddtoSet.Add(certHashToString)
@@ -121,7 +120,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				//}
 				//log.Debug("get issuer string", "string", string(issuer))
 			}
-			}
+		}
 	}
 
 	ethQuitCh := make(chan struct{}, 1)
@@ -134,7 +133,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				loop = false
 			}
 		default:
-			processScan()
+			go processScan()
 		}
 	}
 }
