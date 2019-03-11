@@ -52,7 +52,7 @@ func GetState(config Usechain) State {
 
 	//Check the confirmed stat, if not confirmed yet, confirm && upload self message pubkey
 	res, err = c.ContractCall(node, addr, "getCommitteeConfirmStat")
-	log.Debug("Get the res:", "res", res)
+	log.Debug("Get Committee ConfirmStat:", "res", res)
 	if err != nil || res == contract.ContractFalse {
 		log.Trace("Selected, but not confirmed")
 		return Selected
@@ -60,7 +60,7 @@ func GetState(config Usechain) State {
 
 	//Check whether got key share already, if not try to generating
 	res, err = c.ContractCall(node, addr, "isEntireConfirmed")
-	log.Debug("Get the res:", "res", res)
+	log.Debug("Is Entire Confirmed? ", "res", res)
 	if err != nil || res == contract.ContractFalse {
 		log.Trace("Selected, but not all confirmed")
 		return WaittingOther

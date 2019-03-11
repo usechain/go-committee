@@ -32,7 +32,7 @@ func AccountVerifier(A string, max int) (idset []int) {
 		index := (int(id.Int64()) + i)%max
 		idset = append(idset, index)
 	}
-	fmt.Println("idset", idset)
+	fmt.Println("AccountVerifier idset", idset)
 	return
 }
 

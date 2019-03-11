@@ -127,14 +127,16 @@ func run() {
 
 		case config.Verifying:
 			log.Debug("Verifying...")
+
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
 			shamirkey.InitShamirCommitteeNumber(globalConfig)
-			creditNew.ScanCreditSystemAccount(&globalConfig, cache, core.CommitteeNodeList, core.CommitteeMax)
 
 			// Verifying
 			go func(){
 				shamirkey.AccountVerifyProcess(&globalConfig, cache)
 			}()
+
+			creditNew.ScanCreditSystemAccount(&globalConfig, cache, core.CommitteeNodeList, core.CommitteeMax)
 
 		default:
 			utils.Fatalf("Unknown state")
