@@ -10,7 +10,9 @@ import (
 	"github.com/usechain/go-committee/shamirkey/sssa"
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-committee/wnode"
-	"github.com/usechain/go-committee/shamirkey"
+	"github.com/usechain/go-committee/shamirkey/verify"
+	"github.com/usechain/go-committee/shamirkey/core"
+
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/crypto"
@@ -19,7 +21,7 @@ import (
 const creditAddr = "0xCa29f7b8D73584dBAf97502aC542E3Ab497f7fe9"
 const creditABI = "[{\"constant\": true,\"inputs\": [{\"name\": \"\",\"type\": \"address\"}],\"name\": \"DataSet\",\"outputs\": [{\"name\": \"\",\"type\": \"string\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"\",\"type\": \"uint256\"}],\"name\": \"HashList\",\"outputs\": [{\"name\": \"\",\"type\": \"address\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [],\"name\": \"HashListLength\",\"outputs\": [{\"name\": \"\",\"type\": \"uint256\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": true,\"inputs\": [{\"name\": \"\",\"type\": \"address\"}],\"name\": \"PubkeySet\",\"outputs\": [{\"name\": \"\",\"type\": \"string\"}],\"payable\": false,\"stateMutability\": \"view\",\"type\": \"function\"},{\"constant\": false,\"inputs\": [{\"name\": \"data\",\"type\": \"string\"},{\"name\": \"pubkey\",\"type\": \"string\"}],\"name\": \"addData\",\"outputs\": [],\"payable\": false,\"stateMutability\": \"nonpayable\",\"type\": \"function\"}]"
 
-func ScanCreditSystemAccount(usechain *config.Usechain, pool *shamirkey.SharePool, nodelist []string, max int) {
+func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, nodelist []string, max int) {
 	rpc := usechain.NodeRPC
 	coinbase := usechain.UserProfile.Address
 
@@ -79,7 +81,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *shamirkey.SharePoo
 		log.Debug("get a A public key", "string", A)
 
 		sendPublickeyShared(usechain, nodelist, A, max)
-		pool.SaveEncryptedData(A, et)
+		pool.SaveEncryptedData(A, common.Hash{}, et)
 
 		break
 	}
@@ -99,7 +101,7 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 
 	m := msg.PackVerifyShare(A, pubkey, usechain.UserProfile.CommitteeID)
 
-	for _, id := range shamirkey.AccountVerifier(A, max) {
+	for _, id := range verify.AccountVerifier(A, max) {
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }

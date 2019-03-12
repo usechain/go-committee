@@ -125,7 +125,7 @@ func processArgs() {
 
 	var err error
 	profile, err = config.ReadWhisperNode()
-	fmt.Println(profile)
+	fmt.Println("ReadWhisperNode: ", profile)
 	if err != nil {
 		log.Error("Read the whisper conf", "error", err)
 	}
@@ -529,7 +529,7 @@ func sendLoop() {
 			// because in asymmetric mode it is impossible to decrypt it
 			timestamp := time.Now().Unix()
 			from := crypto.PubkeyToAddress(asymKey.PublicKey)
-			fmt.Printf("\n%d <%x>: %s\n", timestamp, from, s)
+			fmt.Printf("sendLoop \n%d <%x>: %s\n", timestamp, from, s)
 		}
 	}
 }
@@ -591,7 +591,7 @@ func fileReaderLoop() {
 
 func scanLine(prompt string) string {
 	if len(prompt) > 0 {
-		fmt.Print(prompt)
+		fmt.Print("scanLine: ", prompt)
 	}
 	txt, err := input.ReadString('\n')
 	if err != nil {
@@ -652,7 +652,7 @@ func SendMsg(payload []byte, destpub *ecdsa.PublicKey) common.Hash {
 	if err != nil {
 		fmt. Println ( "error:" , err )
 	}
-	log.Info("sendMsg to other committee", "message", string(d))
+	log.Info("Send message", "message", string(d))
 	return envelope.Hash()
 }
 
@@ -738,9 +738,9 @@ func printMessageInfo(msg *whisper.ReceivedMessage) {
 	}
 
 	if whisper.IsPubKeyEqual(msg.Src, &asymKey.PublicKey) {
-		fmt.Printf("\n%s <%x>: %s\n", timestamp, address, text) // message from myself
+		log.Info("Received Message: ", "timestamp", timestamp, "address", address, "msg", text) // message from myself
 	} else {
-		fmt.Printf("\n%s [%x]: %s\n", timestamp, address, text) // message from a peer
+		log.Info("Received Message: ", "timestamp", timestamp, "address", address, "msg", text) // message from a peer
 	}
 }
 
