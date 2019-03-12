@@ -37,13 +37,15 @@ type identityInfo struct {
 }
 
 func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, nodelist []string, max int) {
+	rpc := usechain.NodeRPC
+	coinbase := usechain.UserProfile.Address
+	certHashAddtoSet := NewSet()
+	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
+	var unconfirmedCount *big.Int
+	unconfirmedCountCh := make(chan int64, 1)
+	ethQuitCh := make(chan struct{}, 1)
 
 	processScan := func() {
-		rpc := usechain.NodeRPC
-		coinbase := usechain.UserProfile.Address
-
-		creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
-
 		// get unconfirmed address number
 		UnregisterLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnregisterLen")
 		log.Info("Read contract UnregisterLen", "length", UnregisterLen)
@@ -51,17 +53,17 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			log.Error("contract call", "err", err)
 			return
 		}
-
 		if UnregisterLen == contract.ContractZero || UnregisterLen == contract.ContractNull{
 			return
 		}
-
-		unconfirmedCount, _ := big.NewInt(0).SetString(UnregisterLen[2:], 16)
+		unconfirmedCount, _ = big.NewInt(0).SetString(UnregisterLen[2:], 16)
 		log.Info("Get unconfirmed register count", "count", unconfirmedCount)
+		unconfirmedCountCh <- unconfirmedCount.Int64()
+	}
 
-		certHashAddtoSet := NewSet()
+	processSend := func(unconfirmedCountNum int64) {
 
-		for i := int64(0); i < unconfirmedCount.Int64(); i++ {
+		for i := int64(0); i < unconfirmedCountNum; i++ {
 			// get unconfirmed address index
 			unregister, err := creditCTR.ContractCallParsed(rpc, coinbase, "unregister", big.NewInt(i))
 			if err != nil && len(unregister) == 0 {
@@ -128,7 +130,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 		}
 	}
 
-	ethQuitCh := make(chan struct{}, 1)
 	loop := true
 	for loop {
 		select {
@@ -137,6 +138,9 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				fmt.Println("[SCAN CLOSED] ScanCreditSystemAccount thread exitCh!")
 				loop = false
 			}
+		case  unconfirmedCountNum := <- unconfirmedCountCh: {
+			processSend(unconfirmedCountNum)
+		}
 		default:
 			processScan()
 		}
