@@ -41,8 +41,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 	coinbase := usechain.UserProfile.Address
 	certHashAddtoSet := NewSet()
 	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
-	var unconfirmedCount *big.Int
-	unconfirmedCountCh := make(chan int64, 1)
 	ethQuitCh := make(chan struct{}, 1)
 
 	processScan := func() {
@@ -56,14 +54,9 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 		if UnregisterLen == contract.ContractZero || UnregisterLen == contract.ContractNull{
 			return
 		}
-		unconfirmedCount, _ = big.NewInt(0).SetString(UnregisterLen[2:], 16)
-		log.Info("Get unconfirmed register count", "count", unconfirmedCount)
-		unconfirmedCountCh <- unconfirmedCount.Int64()
-	}
+		unconfirmedCount, _ := big.NewInt(0).SetString(UnregisterLen[2:], 16)
 
-	processSend := func(unconfirmedCountNum int64) {
-
-		for i := int64(0); i < unconfirmedCountNum; i++ {
+		for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 			// get unconfirmed address index
 			unregister, err := creditCTR.ContractCallParsed(rpc, coinbase, "unregister", big.NewInt(i))
 			if err != nil && len(unregister) == 0 {
@@ -112,20 +105,10 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 					return
 				}
 				log.Debug("Get public key", "key", string(pubkey))
-				//testData := "0x044da1f0e4bd859532f588372d2b63921fae49eaed12d5254f071993700c1835f1c6bcb351d3d042cd99dfeb30114be45272ec2167b49914669c42276bb58da91a59c6c4d5f3fc8e004dbca0613416a5669626987d9ba658d3cfb1294063264799d40c644e41736c1bb7e64530771f7af8521b67c6e03470253794dd3806587f083326da302f3725f0963962094beb20ca598b13a81823682c2ceb0cc4157c01091d9653900d6f940768cf8110c6c9293bd812420833402686cff61322421d3cbe78dd64a427ca8dc7a5dbf126d05abee2"
-				//testM, _ := hexutil.Decode(testData)
-				//fmt.Printf("m.data: %x\n", testM)
 
 				encData, _ := hexutil.Decode(m.Data)
 				sendPublickeyShared(usechain, nodelist, string(pubkey), max)
 				pool.SaveEncryptedData(pubkey, common.Hash(certHash), string(encData))
-
-				//issuer, ok := (res[1]).([]byte)
-				//if !ok {
-				//	log.Error("It's not ok for", "type", reflect.TypeOf(res[1]))
-				//	return
-				//}
-				//log.Debug("get issuer string", "string", string(issuer))
 			}
 		}
 	}
@@ -138,9 +121,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				fmt.Println("[SCAN CLOSED] ScanCreditSystemAccount thread exitCh!")
 				loop = false
 			}
-		case  unconfirmedCountNum := <- unconfirmedCountCh: {
-			processSend(unconfirmedCountNum)
-		}
 		default:
 			processScan()
 		}
