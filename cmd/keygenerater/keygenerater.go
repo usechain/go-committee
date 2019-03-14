@@ -21,6 +21,7 @@ import (
 	"github.com/usechain/go-committee/account"
 	"github.com/usechain/go-committee/console"
 	"github.com/usechain/go-committee/node/config"
+	"github.com/go-wanchain/log"
 )
 
 func main() {
@@ -43,7 +44,7 @@ func main() {
 			p, _ := config.ReadProfile()
 			p.Address = ac.Address.Hex()
 			config.UpdateProfile(p)
-			fmt.Println("==========committee.json Updated")
+			log.Info("committee.json Updated")
 			active = false
 		case "n":
 			fmt.Println("Finished")

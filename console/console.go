@@ -32,6 +32,9 @@ import (
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-committee/account"
+	"github.com/peterh/liner"
+	"github.com/usechain/go-committee/utils"
+	"path/filepath"
 )
 
 // Structure of a command
@@ -68,7 +71,7 @@ func New() *Console {
 	con.commands = make(map[string]command)
 	con.Active = false
 	con.Title = "*** Welcome to the Usechain Committee console! ***\n"
-	con.Prompt = "> "
+	con.Prompt = ""
 	con.NotFound = "Command not found: "
 	con.NewLine = "\n"
 
@@ -156,14 +159,29 @@ func (con *Console) Start() {
 	fmt.Print(con.Title)
 
 	// Set the initial values
-	var typed string
 	con.Active = true
+
+	var history []string
+	histfile := filepath.Join(utils.DefaultDataDir() + "history")
+
+	Prompter := liner.NewLiner()
+	defer Prompter.Close()
+
+	if content, err := os.Open(histfile); err != nil {
+		Prompter.ReadHistory(strings.NewReader(strings.Join(nil, "\n")))
+		content.Close()
+	} else {
+		Prompter.ReadHistory(content)
+		content.Close()
+	}
 
 	// Loop while the value is true
 	for con.Active {
-		fmt.Print(con.Prompt)
-		typed = Readline()
-
+		//fmt.Print(con.Prompt)
+		typed, err := Prompter.Prompt("> ")
+		if err != nil {
+			fmt.Println(err)
+		}
 		// If at least a character is typed
 		if arr := strings.Fields(typed); len(arr) > 0 {
 			if cmd, ok := con.commands[arr[0]]; ok {
@@ -172,8 +190,22 @@ func (con *Console) Start() {
 			} else {
 				fmt.Println(con.NotFound + arr[0])
 			}
-
 			fmt.Print(con.NewLine)
+		}
+
+		if command := strings.TrimSpace(typed); len(history) == 0 || command != history[len(history)-1] {
+			history = append(history, command)
+			Prompter.AppendHistory(command)
+
+			if f, err := os.Create(histfile); err != nil {
+				log.Error("Error writing history file: ", "error", err)
+			} else {
+				_, err := Prompter.WriteHistory(f)
+				if err != nil{
+					log.Error("Error writing history file: ", "error", err)
+				}
+				f.Close()
+			}
 		}
 	}
 }

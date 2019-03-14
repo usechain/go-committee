@@ -29,6 +29,7 @@ import (
 	"github.com/usechain/go-committee/node/config"
 	//"github.com/usechain/go-committee/contract/creditTesting"
 	"github.com/usechain/go-committee/contract/creditNew"
+	"fmt"
 )
 
 var (
@@ -63,6 +64,7 @@ func initial() {
 
 		log.Warn("Please unlock the committee account")
 		log.Warn("Enter \"committee.unlock \"passwd\"\"")
+		fmt.Println("========>>>")
 		select {
 		case passwd := <- account.CommitteePasswd:
 			err = globalConfig.Kstore.TimedUnlock(signer, passwd, 0)
@@ -111,7 +113,7 @@ func run() {
 		case config.KeyGenerating:
 			log.Warn("KeyGenerating")
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
-			shamirkey.InitShamirCommitteeNumber(globalConfig)
+			//shamirkey.InitShamirCommitteeNumber(globalConfig)
 
 			//Check whether get enough shares
 			go func(){
