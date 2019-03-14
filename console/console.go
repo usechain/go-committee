@@ -71,7 +71,7 @@ func New() *Console {
 	con.commands = make(map[string]command)
 	con.Active = false
 	con.Title = "*** Welcome to the Usechain Committee console! ***\n"
-	con.Prompt = "> "
+	con.Prompt = ""
 	con.NotFound = "Command not found: "
 	con.NewLine = "\n"
 
@@ -177,8 +177,8 @@ func (con *Console) Start() {
 
 	// Loop while the value is true
 	for con.Active {
-		fmt.Print(con.Prompt)
-		typed, err := Prompter.Prompt("")
+		//fmt.Print(con.Prompt)
+		typed, err := Prompter.Prompt("> ")
 		if err != nil {
 			fmt.Println(err)
 		}
