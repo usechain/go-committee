@@ -26,7 +26,7 @@ import (
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/shamirkey/ecies"
-	"github.com/go-wanchain/common/hexutil"
+	"github.com/usechain/go-usechain/common/hexutil"
 )
 
 const chanSizeLimit = 10

@@ -21,7 +21,7 @@ import (
 	"github.com/usechain/go-committee/account"
 	"github.com/usechain/go-committee/console"
 	"github.com/usechain/go-committee/node/config"
-	"github.com/go-wanchain/log"
+	"github.com/usechain/go-usechain/log"
 )
 
 func main() {
