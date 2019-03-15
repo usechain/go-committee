@@ -30,7 +30,6 @@ import (
 	"github.com/usechain/go-committee/shamirkey/verify"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/contract/creditNew"
-	"sort"
 )
 
 //Read committee config from contract
@@ -80,9 +79,12 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 			return
 		}
 		// Prevent duplicate additions
-		core.CommitteeNodeList = append(core.CommitteeNodeList, asym)
+		if len(core.CommitteeNodeList) == 0 {
+			core.CommitteeNodeList = append(core.CommitteeNodeList, asym)
+		} else if len(core.CommitteeNodeList) == 5 {
+			core.CommitteeNodeList[i] = asym
+		}
 	}
-	core.CommitteeNodeList = RemoveDuplicate(core.CommitteeNodeList)
 	log.Debug("CommitteeNodeList", "list", core.CommitteeNodeList)
 }
 
@@ -100,6 +102,7 @@ func ShamirKeySharesGenerate(id int, keypool *core.KeyPool) {
 		log.Error("err", err)
 		return
 	}
+
 	combined, err := sssa.Combine256Bit(created)
 	if err != nil || combined.Cmp(priv.D) != 0 {
 		log.Error("Fatal: combining: ", err)
@@ -198,19 +201,3 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 	}
 }
 
-func RemoveDuplicate(a []string) (ret []string) {
-	sort.Strings(a)
-	if reflect.TypeOf(a).Kind() != reflect.Slice {
-		fmt.Printf("<SliceRemoveDuplicate> <a> is not slice but %T\n", a)
-		return ret
-	}
-
-	va := reflect.ValueOf(a)
-	for i := 0; i < va.Len(); i++ {
-		if i > 0 && reflect.DeepEqual(va.Index(i-1).Interface(), va.Index(i).Interface()) {
-			continue
-		}
-		ret = append(ret, va.Index(i).Interface().(string))
-	}
-	return ret
-}
