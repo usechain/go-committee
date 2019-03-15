@@ -78,6 +78,7 @@ func (crt *Contract) Call(method string, params ...interface{}) []byte {
 func (crt *Contract) ContractCall(node *usedrpc.UseRPC, coinbase string, method string, params ...interface{}) (string, error) {
 	bytes, err := crt.Abi.Pack(method, params ...)
 	if err != nil {
+
 		return "", err
 	}
 
