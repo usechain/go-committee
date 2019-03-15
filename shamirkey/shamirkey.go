@@ -182,7 +182,9 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 	log.Debug("account verify process++++++++++++++++")
 
 	go func() {
-		pool.CheckSharedMsg(usechain, core.CommitteeRequires)
+		for {
+			pool.CheckSharedMsg(usechain, core.CommitteeRequires)
+		}
 	}()
 
 	select {
@@ -195,7 +197,6 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 
 		creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
 		fmt.Println("send success")
-
 	}
 }
 
