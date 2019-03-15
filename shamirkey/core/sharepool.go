@@ -91,7 +91,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 		//Decryption
 		fmt.Printf("encryptedSet %x\n", self.encryptedSet[A])
-		
+
 		//ct, _ := hex.DecodeString(self.encryptedSet[A])
 		ct :=[]byte(self.encryptedSet[A])
 		//fmt.Printf("ct %x\n", ct)

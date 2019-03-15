@@ -166,11 +166,9 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 			log.Debug("detected a new logged in committee")
 			ShamirSharesReponse(m.Sender, keypool)
 		case msg.VerifyShareMsg:
-			fmt.Println("m.Data===================", m.Data)
 			A, bsA := msg.UnpackVerifyShare(m.Data)
 			log.Debug("received a new shared for account verifying", "A", A)
 			if verify.IsAccountVerifier(A, core.CommitteeMax, p.CommitteeID) {
-				log.Debug("IsAccountVerifier")
 				pool.SaveAccountSharedCache(A, bsA, m.Sender)
 			}
 		}
