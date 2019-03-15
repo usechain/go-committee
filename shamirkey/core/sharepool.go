@@ -71,10 +71,7 @@ func (self *SharePool)SaveEncryptedData(A string, h common.Hash, data string) {
 func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
-	fmt.Println("====================")
 	for A, shares := range self.shareSet {
-		fmt.Println("verifiedSet==========",A)
-		fmt.Println("verifedset+++++++", shares)
 		//check whether got enough shares
 		if  _, ok := self.encryptedSet[A]; !ok || len(shares) < requires {
 			continue
@@ -85,28 +82,28 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			fmt.Println("Fatal: combining: ", err)
 			continue
 		}
+
 		hash := crypto.Keccak256(crypto.FromECDSAPub(bA))        //hash([b]A)
 		privECDSA, _ := crypto.ToECDSA(hash)
 		priv := ecies.ImportECDSA(privECDSA)
 
-		fmt.Println("committeePub", common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey)))
+		fmt.Println("encrypted pub=============", common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey)))
 
 		//Decryption
 		fmt.Printf("encryptedSet %x\n", self.encryptedSet[A])
-
+		
 		//ct, _ := hex.DecodeString(self.encryptedSet[A])
 		ct :=[]byte(self.encryptedSet[A])
 		//fmt.Printf("ct %x\n", ct)
 		pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 		if err != nil {
-			fmt.Println("decryption", err.Error())
+			fmt.Println("decryption: ", err.Error())
 			continue
 		}
 		fmt.Println(string(pt))
 
 		//Confirm stat with the contract
 		self.verifiedSet[A] = self.pendingSet[A]
-		fmt.Println("verifiedSet==========",A)
 		self.VerifiedChan <- A
 		delete(self.pendingSet, A)
 		delete(self.encryptedSet, A)
