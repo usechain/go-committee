@@ -30,7 +30,6 @@ import (
 	"github.com/usechain/go-committee/shamirkey/verify"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/contract/creditNew"
-	"sort"
 )
 
 //Read committee config from contract
@@ -80,9 +79,12 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 			return
 		}
 		// Prevent duplicate additions
-		core.CommitteeNodeList = append(core.CommitteeNodeList, asym)
+		if len(core.CommitteeNodeList) < 5 {
+			core.CommitteeNodeList = append(core.CommitteeNodeList, asym)
+		} else {
+			core.CommitteeNodeList[i] = asym
+		}
 	}
-	core.CommitteeNodeList = RemoveDuplicate(core.CommitteeNodeList)
 	log.Debug("CommitteeNodeList", "list", core.CommitteeNodeList)
 }
 
@@ -100,6 +102,7 @@ func ShamirKeySharesGenerate(id int, keypool *core.KeyPool) {
 		log.Error("err", err)
 		return
 	}
+
 	combined, err := sssa.Combine256Bit(created)
 	if err != nil || combined.Cmp(priv.D) != 0 {
 		log.Error("Fatal: combining: ", err)
@@ -167,7 +170,7 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 			ShamirSharesReponse(m.Sender, keypool)
 		case msg.VerifyShareMsg:
 			A, bsA := msg.UnpackVerifyShare(m.Data)
-			log.Debug("received a new shared for account verifying")
+			log.Debug("received a new shared for account verifying", "A", A)
 			if verify.IsAccountVerifier(A, core.CommitteeMax, p.CommitteeID) {
 				pool.SaveAccountSharedCache(A, bsA, m.Sender)
 			}
@@ -177,36 +180,25 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 
 // The process for account verify, read the manage contract and handle un-register request
 func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
-
 	go func() {
-		pool.CheckSharedMsg(usechain, core.CommitteeRequires)
+		for {
+			pool.CheckSharedMsg(usechain, core.CommitteeRequires)
+		}
 	}()
 
-	select {
-	case v := <- pool.VerifiedChan:
-		pubkey := crypto.ToECDSAPub(common.FromHex(v))
-		addr := crypto.PubkeyToAddress(*pubkey)
-		certHash := pool.GetVerifiedCertHash(v)
+	for {
+		select {
+		case v := <- pool.VerifiedChan:
+			pubkey := crypto.ToECDSAPub(common.FromHex(v))
+			log.Info("VerifiedChan pubkey", "pubkey", pubkey)
 
-		creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
-		fmt.Println("send success")
+			addr := crypto.PubkeyToAddress(*pubkey)
+			certHash := pool.GetVerifiedCertHash(v)
 
-	}
-}
-
-func RemoveDuplicate(a []string) (ret []string) {
-	sort.Strings(a)
-	if reflect.TypeOf(a).Kind() != reflect.Slice {
-		fmt.Printf("<SliceRemoveDuplicate> <a> is not slice but %T\n", a)
-		return ret
-	}
-
-	va := reflect.ValueOf(a)
-	for i := 0; i < va.Len(); i++ {
-		if i > 0 && reflect.DeepEqual(va.Index(i-1).Interface(), va.Index(i).Interface()) {
-			continue
+			err := creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
+			if err == nil {
+				log.Info("ConfirmCreditSystemAccount", "result", "success")
+			}
 		}
-		ret = append(ret, va.Index(i).Interface().(string))
 	}
-	return ret
 }

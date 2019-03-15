@@ -57,7 +57,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			// get unconfirmed address index
 			unregister, err := creditCTR.ContractCallParsed(rpc, coinbase, "unregister", big.NewInt(i))
 			if err != nil && len(unregister) == 0 {
-				log.Error("Read unconfirmed address failed", "err", err)
+				log.Debug("Read unconfirmed address failed", "err", err)
 				return
 			}
 			certHash, ok := (unregister[0]).([32]uint8)
@@ -66,13 +66,13 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				return
 			}
 
-			certHashToString := string(certHash[:])
+			certHashToString := hexutil.Encode(certHash[:])
 			if certHashAddtoSet.Has(certHashToString) {
 				continue
 			} else {
 				certHashAddtoSet.Add(certHashToString)
 				// get encrypted string based on address as index
-				log.Info("certHash", "certHash", certHashToString)
+				log.Info("Receive certHash", "certHash", certHashToString)
 				getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase, "getHashData", certHash)
 
 				if err != nil {
@@ -86,7 +86,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[0]))
 					return
 				}
-				log.Info("Get identity string", "string", string(identity))
+				log.Debug("Get identity string", "string", string(identity))
 
 				m := identityInfo{}
 				err = json.Unmarshal([]byte(identity), &m)
@@ -124,7 +124,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 	}
 }
 
-func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, hash common.Hash) {
+func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, hash common.Hash) error {
 	rpc := usechain.NodeRPC
 	coinbase := usechain.UserProfile.Address
 	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
@@ -134,11 +134,13 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 	log.Info("verifyHash transaction", "hash", res)
 	if err != nil {
 		log.Error("contract call", "err", err)
-		return
+		return err
 	}
+
 	if res == contract.ContractZero || res == contract.ContractNull {
-		return
+		return nil
 	}
+	return nil
 }
 
 func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int) {
@@ -161,4 +163,3 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }
-

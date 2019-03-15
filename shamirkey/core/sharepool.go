@@ -24,8 +24,10 @@ import (
 	"github.com/usechain/go-committee/shamirkey/sssa"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/common"
+	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/shamirkey/ecies"
+	"github.com/usechain/go-usechain/common/hexutil"
 )
 
 const chanSizeLimit = 10
@@ -58,7 +60,6 @@ func (self *SharePool)SaveAccountSharedCache(A string, bsA string, id int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.shareSet[A] = append(self.shareSet[A], bsA)
-	fmt.Println(A, self.shareSet[A])
 }
 
 func (self *SharePool)SaveEncryptedData(A string, h common.Hash, data string) {
@@ -82,21 +83,22 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			fmt.Println("Fatal: combining: ", err)
 			continue
 		}
+
 		hash := crypto.Keccak256(crypto.FromECDSAPub(bA))        //hash([b]A)
+
+		log.Debug("Received Hash", hexutil.Encode(hash[:]))
 		privECDSA, _ := crypto.ToECDSA(hash)
+
+		pub:=common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey))
+		log.Debug("Received Publick key",pub)
+
 		priv := ecies.ImportECDSA(privECDSA)
 
-		fmt.Println("committeePub", common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey)))
-
 		//Decryption
-		fmt.Printf("encryptedSet %x\n", self.encryptedSet[A])
-
-		//ct, _ := hex.DecodeString(self.encryptedSet[A])
 		ct :=[]byte(self.encryptedSet[A])
-		//fmt.Printf("ct %x\n", ct)
 		pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 		if err != nil {
-			fmt.Println("decryption", err.Error())
+			fmt.Println("decryption: ", err.Error())
 			continue
 		}
 		fmt.Println(string(pt))

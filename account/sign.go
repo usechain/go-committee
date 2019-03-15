@@ -30,7 +30,7 @@ var CommitteePasswd = make(chan string, 1)
 
 func DefaultKeystore() *keystore.KeyStore{
 	// Create an encrypted keystore with standard crypto parameters
-	ks := keystore.NewKeyStore(filepath.Join(utils.DefaultDataDir(), "keystore"), keystore.StandardScryptN, keystore.StandardScryptP)
+	ks := keystore.NewKeyStore(filepath.Join(utils.DefaultCommDataDir(), "keystore"), keystore.StandardScryptN, keystore.StandardScryptP)
 	return ks
 }
 

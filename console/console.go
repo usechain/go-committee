@@ -35,6 +35,7 @@ import (
 	"github.com/peterh/liner"
 	"github.com/usechain/go-committee/utils"
 	"path/filepath"
+	"github.com/usechain/go-committee/node/config"
 )
 
 // Structure of a command
@@ -66,7 +67,7 @@ type Console struct {
 }
 
 // The New function creates an instance of the console type.
-func New() *Console {
+func New(conf config.Usechain) *Console {
 	con := &Console{}
 	con.commands = make(map[string]command)
 	con.Active = false
@@ -85,7 +86,7 @@ func New() *Console {
 	})
 
 	con.Add("use.coinbase", "Get the used node coinbase", func(typed string) {
-		c := usedrpc.NewUseRPC("http://10.30.43.237:8545")
+		c := usedrpc.NewUseRPC(conf.NodeRPC.URL())
 		coinbase, err := c.UseCoinbase()
 		if err != nil {
 			log.Info("err:", "err", err)
@@ -95,7 +96,7 @@ func New() *Console {
 	})
 
 	con.Add("use.blockNumber", "Get the block number", func(typed string) {
-		c := usedrpc.NewUseRPC("http://10.30.43.237:8545")
+		c := usedrpc.NewUseRPC(conf.NodeRPC.URL())
 		blocknumber, err := c.UseBlockNumber()
 		if err != nil {
 			log.Info("err:", "err", err)
