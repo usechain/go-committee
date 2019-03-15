@@ -66,7 +66,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				return
 			}
 
-			certHashToString := string(certHash[:])
+			certHashToString := hexutil.Encode(certHash[:])
 			if certHashAddtoSet.Has(certHashToString) {
 				continue
 			} else {

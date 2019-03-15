@@ -58,7 +58,7 @@ func (self *SharePool)SaveAccountSharedCache(A string, bsA string, id int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.shareSet[A] = append(self.shareSet[A], bsA)
-	fmt.Println(A, self.shareSet[A])
+	fmt.Println("SaveAccountSharedCache:::::::::::::::",A, self.shareSet[A])
 }
 
 func (self *SharePool)SaveEncryptedData(A string, h common.Hash, data string) {
@@ -71,7 +71,10 @@ func (self *SharePool)SaveEncryptedData(A string, h common.Hash, data string) {
 func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
+	fmt.Println("====================")
 	for A, shares := range self.shareSet {
+		fmt.Println("verifiedSet==========",A)
+		fmt.Println("verifedset+++++++", shares)
 		//check whether got enough shares
 		if  _, ok := self.encryptedSet[A]; !ok || len(shares) < requires {
 			continue
@@ -103,6 +106,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 		//Confirm stat with the contract
 		self.verifiedSet[A] = self.pendingSet[A]
+		fmt.Println("verifiedSet==========",A)
 		self.VerifiedChan <- A
 		delete(self.pendingSet, A)
 		delete(self.encryptedSet, A)

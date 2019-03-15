@@ -40,6 +40,7 @@ func AccountVerifier(A string, max int) (idset []int) {
 func IsAccountVerifier(A string, max int, cid int) bool {
 	idset := AccountVerifier(A, max)
 	for _, id := range idset {
+	fmt.Println("IsAccountVerifier",id, cid)
 		if id == cid {
 			return true
 		}

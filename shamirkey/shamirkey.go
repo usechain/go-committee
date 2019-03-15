@@ -166,9 +166,11 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 			log.Debug("detected a new logged in committee")
 			ShamirSharesReponse(m.Sender, keypool)
 		case msg.VerifyShareMsg:
+			fmt.Println("m.Data===================", m.Data)
 			A, bsA := msg.UnpackVerifyShare(m.Data)
-			log.Debug("received a new shared for account verifying")
+			log.Debug("received a new shared for account verifying", "A", A)
 			if verify.IsAccountVerifier(A, core.CommitteeMax, p.CommitteeID) {
+				log.Debug("IsAccountVerifier")
 				pool.SaveAccountSharedCache(A, bsA, m.Sender)
 			}
 		}
@@ -177,6 +179,7 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 
 // The process for account verify, read the manage contract and handle un-register request
 func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
+	log.Debug("account verify process++++++++++++++++")
 
 	go func() {
 		pool.CheckSharedMsg(usechain, core.CommitteeRequires)
@@ -185,7 +188,7 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 	select {
 	case v := <- pool.VerifiedChan:
 		pubkey := crypto.ToECDSAPub(common.FromHex(v))
-		fmt.Println("VerifiedChan pubkey", pubkey)
+		fmt.Println("VerifiedChan pubkey=======================", pubkey)
 
 		addr := crypto.PubkeyToAddress(*pubkey)
 		certHash := pool.GetVerifiedCertHash(v)
