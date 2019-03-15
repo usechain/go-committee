@@ -80,6 +80,7 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 		}
 
 		// Prevent duplicate additions
+
 		core.CommitteeNodeList = append(core.CommitteeNodeList, asym)
 	}
 	log.Debug("CommitteeNodeList", "list", core.CommitteeNodeList)

@@ -64,7 +64,7 @@ func initial() {
 
 		log.Warn("Please unlock the committee account")
 		log.Warn("Enter \"committee.unlock \"passwd\"\"")
-		fmt.Println("========>>>")
+		fmt.Print("========>>>")
 		select {
 		case passwd := <- account.CommitteePasswd:
 			err = globalConfig.Kstore.TimedUnlock(signer, passwd, 0)
@@ -89,6 +89,9 @@ func run() {
 		globalConfig.Workstat = config.GetState(globalConfig)
 		log.Debug("The process is in stage", "workStat", globalConfig.Workstat)
 
+		//Read from contract to update certid, upload asym key, and download all committee certID and asym key
+		shamirkey.InitShamirCommitteeNumber(globalConfig)
+
 		switch globalConfig.Workstat {
 		case config.NotCommittee:
 			utils.Fatalf("Not a legal committee address!")
@@ -98,7 +101,7 @@ func run() {
 			//Get committe id from contract
 			id, err := manager.GetSelfCommitteeID( globalConfig)
 			if err != nil || id == -1{
-				log.Error("Get certid failed", "err", err)
+				log.Error("Get CommitteeID failed", "err", err)
 			}
 			globalConfig.UserProfile.CommitteeID = id
 			globalConfig.UserProfile.Role = "Sharer"
@@ -112,8 +115,6 @@ func run() {
 
 		case config.KeyGenerating:
 			log.Warn("KeyGenerating")
-			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
-			//shamirkey.InitShamirCommitteeNumber(globalConfig)
 
 			//Check whether get enough shares
 			go func(){
@@ -129,10 +130,6 @@ func run() {
 
 		case config.Verifying:
 			log.Debug("Verifying...")
-
-			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
-			shamirkey.InitShamirCommitteeNumber(globalConfig)
-
 			// Verifying
 			go func(){
 				shamirkey.AccountVerifyProcess(&globalConfig, cache)
