@@ -185,6 +185,8 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 	select {
 	case v := <- pool.VerifiedChan:
 		pubkey := crypto.ToECDSAPub(common.FromHex(v))
+		fmt.Println("VerifiedChan pubkey", pubkey)
+
 		addr := crypto.PubkeyToAddress(*pubkey)
 		certHash := pool.GetVerifiedCertHash(v)
 

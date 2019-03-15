@@ -124,7 +124,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 	}
 }
 
-func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, hash common.Hash) {
+func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, hash common.Hash) error {
 	rpc := usechain.NodeRPC
 	coinbase := usechain.UserProfile.Address
 	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
@@ -134,11 +134,12 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 	log.Info("verifyHash transaction", "hash", res)
 	if err != nil {
 		log.Error("contract call", "err", err)
-		return
+		return err
 	}
 	if res == contract.ContractZero || res == contract.ContractNull {
-		return
+		return nil
 	}
+	return nil
 }
 
 func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int) {
