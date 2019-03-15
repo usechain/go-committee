@@ -79,9 +79,9 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 			return
 		}
 		// Prevent duplicate additions
-		if len(core.CommitteeNodeList) == 0 {
+		if len(core.CommitteeNodeList) < 5 {
 			core.CommitteeNodeList = append(core.CommitteeNodeList, asym)
-		} else if len(core.CommitteeNodeList) == 5 {
+		} else {
 			core.CommitteeNodeList[i] = asym
 		}
 	}
