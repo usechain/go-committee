@@ -26,6 +26,7 @@ import (
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/shamirkey/ecies"
+	"github.com/go-wanchain/common/hexutil"
 )
 
 const chanSizeLimit = 10
@@ -84,7 +85,12 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		}
 
 		hash := crypto.Keccak256(crypto.FromECDSAPub(bA))        //hash([b]A)
+		fmt.Println("hash:::::::::::::::::::::", hexutil.Encode(hash[:]))
 		privECDSA, _ := crypto.ToECDSA(hash)
+		pub:=common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey))
+		fmt.Println("pub--------------------------->",pub)
+
+
 		priv := ecies.ImportECDSA(privECDSA)
 
 		fmt.Println("encrypted pub=============", common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey)))
