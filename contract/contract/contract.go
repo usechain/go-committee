@@ -126,7 +126,7 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 	}
 
 	//fmt.Printf("bytes: %x\n", bytes)
-	tx := types.NewTransaction(uint64(nonce), common.HexToAddress(crt.Address), nil, 1000000, big.NewInt(2000000000), bytes)
+	tx := types.NewTransaction(uint64(nonce), common.HexToAddress(crt.Address), nil, 1000000, big.NewInt(20000000000), bytes)
 	//fmt.Println("coinbase", coinbase)
 	//ks := account.DefaultKeystore()
 	ac, err := account.CommitteeAccount(common.HexToAddress(coinbase), ks)

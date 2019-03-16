@@ -43,8 +43,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 	processScan := func() {
 		// get unconfirmed address number
-		log.Debug("process scan")
-
 		UnregisterLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnregisterLen")
 		if err != nil {
 			log.Error("contract call", "err", err)
@@ -54,7 +52,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			return
 		}
 		unconfirmedCount, _ := big.NewInt(0).SetString(UnregisterLen[2:], 16)
-
 
 		for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 			// get unconfirmed address index
