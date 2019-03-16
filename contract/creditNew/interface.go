@@ -17,7 +17,6 @@ import (
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-usechain/common/hexutil"
 	"fmt"
-	"time"
 )
 
 const creditAddr = "0xfffffffffffffffffffffffffffffffff0000001"
@@ -138,18 +137,16 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 		return err
 	}
 
-	time.Sleep(time.Microsecond * 500)
 	// verify hash
-	res3, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	log.Info("verifyHash transaction 500", "hash", res3)
+	res4, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
+	log.Info("verifyHash transaction 1000", "hash", res4)
 	if err != nil {
 		log.Error("contract call", "err", err)
 	}
 
-	time.Sleep(time.Second)
 	// verify hash
-	res4, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	log.Info("verifyHash transaction 1000", "hash", res4)
+	res5, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
+	log.Info("verifyHash transaction 1000", "hash", res5)
 	if err != nil {
 		log.Error("contract call", "err", err)
 	}

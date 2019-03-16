@@ -114,19 +114,24 @@ func (crt *Contract) ContractCallParsed(rpc *usedrpc.UseRPC, coinbase string, me
 	return OutDataInterface, nil
 }
 
+var Nonce uint64
+
 func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyStore, coinbase string, method string, params ...interface{}) (string, error) {
 	bytes, err := crt.Abi.Pack(method, params ...)
 	if err != nil {
 		return "", err
 	}
-
 	nonce, err := node.UseGetTransactionCount(coinbase, "pending")
 	if err != nil {
 		log.Error("Get nonce failed", "error", err)
 	}
 
+	if Nonce <= uint64(nonce) {
+		Nonce = uint64(nonce)
+	}
+
 	//fmt.Printf("bytes: %x\n", bytes)
-	tx := types.NewTransaction(uint64(nonce), common.HexToAddress(crt.Address), nil, 1000000, big.NewInt(20000000000), bytes)
+	tx := types.NewTransaction(Nonce, common.HexToAddress(crt.Address), nil, 1000000, big.NewInt(20000000000), bytes)
 	//fmt.Println("coinbase", coinbase)
 	//ks := account.DefaultKeystore()
 	ac, err := account.CommitteeAccount(common.HexToAddress(coinbase), ks)
@@ -140,9 +145,8 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 		log.Error("Sign the committee Msg failed, Please unlock the verifier account", "err", err)
 		return "", err
 	}
-	//fmt.Println("signed")
-
 	txbyte, err := rlp.EncodeToBytes(signedTx)
 	result, err := node.UseSendRawTransaction(hexutil.Encode(txbyte))
+	Nonce++
 	return result, err
 }
