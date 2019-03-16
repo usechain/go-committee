@@ -198,7 +198,7 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 			certHash := pool.GetVerifiedCertHash(v)
 
 			err := creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
-			if err != nil {
+			if err == nil {
 				fmt.Println("send success")
 			}
 		}
