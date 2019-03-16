@@ -57,7 +57,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			// get unconfirmed address index
 			unregister, err := creditCTR.ContractCallParsed(rpc, coinbase, "unregister", big.NewInt(i))
 			if err != nil && len(unregister) == 0 {
-				log.Error("Read unconfirmed address failed", "err", err)
+				log.Debug("Read unconfirmed address failed", "err", err)
 				return
 			}
 			certHash, ok := (unregister[0]).([32]uint8)

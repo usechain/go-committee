@@ -107,7 +107,7 @@ func (crt *Contract) ContractCallParsed(rpc *usedrpc.UseRPC, coinbase string, me
 	decodeData, err := hex.DecodeString(res[2:])
 	OutDataInterface,err :=method.Outputs.UnpackABI(decodeData)
 	if err != nil {
-		fmt.Println("unpack abi failed:", err)
+		log.Debug("unpack abi failed:", err)
 		return nil, err
 	}
 

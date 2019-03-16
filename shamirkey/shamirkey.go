@@ -188,16 +188,18 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 		}
 	}()
 
-	select {
-	case v := <- pool.VerifiedChan:
-		pubkey := crypto.ToECDSAPub(common.FromHex(v))
-		fmt.Println("VerifiedChan pubkey=======================", pubkey)
+	for {
+		select {
+		case v := <- pool.VerifiedChan:
+			pubkey := crypto.ToECDSAPub(common.FromHex(v))
+			fmt.Println("VerifiedChan pubkey=======================", pubkey)
 
-		addr := crypto.PubkeyToAddress(*pubkey)
-		certHash := pool.GetVerifiedCertHash(v)
+			addr := crypto.PubkeyToAddress(*pubkey)
+			certHash := pool.GetVerifiedCertHash(v)
 
-		creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
-		fmt.Println("send success")
+			creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
+			fmt.Println("send success")
+		}
 	}
 }
 
