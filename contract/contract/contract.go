@@ -120,7 +120,7 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 		return "", err
 	}
 
-	nonce, err := node.UseGetTransactionCount(coinbase, "latest")
+	nonce, err := node.UseGetTransactionCount(coinbase, "pending")
 	if err != nil {
 		log.Error("Get nonce failed", "error", err)
 	}

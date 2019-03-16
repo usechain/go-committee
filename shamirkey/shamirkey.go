@@ -197,8 +197,10 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 			addr := crypto.PubkeyToAddress(*pubkey)
 			certHash := pool.GetVerifiedCertHash(v)
 
-			creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
-			fmt.Println("send success")
+			err := creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
+			if err != nil {
+				fmt.Println("send success")
+			}
 		}
 	}
 }
