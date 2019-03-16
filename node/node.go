@@ -96,7 +96,7 @@ func run() {
 		case config.Selected:
 			log.Debug("selected, please confirm")
 			//Get committe id from contract
-			id, err := manager.GetSelfCommitteeID( globalConfig)
+			id, err := manager.GetSelfCommitteeID(globalConfig)
 			if err != nil || id == -1{
 				log.Error("Get CommitteeID failed", "err", err)
 			}

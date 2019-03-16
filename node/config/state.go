@@ -44,7 +44,7 @@ func GetState(config Usechain) State {
 
 	//Check whether a real committee
 	res, err := c.ContractCall(node, addr, "IsCommittee")
-	log.Debug("Is Committee ? ", "res", res)
+	log.Debug("Get committee state ", "res", res)
 	if err != nil || res == contract.ContractFalse {
 		log.Error("Not a committee")
 		return NotCommittee
