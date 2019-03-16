@@ -137,14 +137,6 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 		log.Error("contract call", "err", err)
 		return err
 	}
-	time.Sleep(time.Microsecond * 100)
-
-	// verify hash
-	res2, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	log.Info("verifyHash transaction 100", "hash", res2)
-	if err != nil {
-		log.Error("contract call", "err", err)
-	}
 
 	time.Sleep(time.Microsecond * 500)
 	// verify hash
@@ -157,10 +149,9 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 	time.Sleep(time.Second)
 	// verify hash
 	res4, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	log.Info("verifyHash transaction 500", "hash", res4)
+	log.Info("verifyHash transaction 1000", "hash", res4)
 	if err != nil {
 		log.Error("contract call", "err", err)
-		return 
 	}
 
 	if res == contract.ContractZero || res == contract.ContractNull {
