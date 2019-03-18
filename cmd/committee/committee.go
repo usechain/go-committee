@@ -19,13 +19,19 @@ package main
 import (
 	"github.com/usechain/go-committee/node"
 	"github.com/usechain/go-committee/wnode"
+	"github.com/usechain/go-committee/console"
 )
 
 func main() {
+	node.Initial()
+
+	con := console.New(&node.GlobalConfig)
+
 	// Start whisper node
 	go wnode.Wnode()
 
 	// Start committee service
 	go node.Start()
+	con.Start()
 
 }
