@@ -150,8 +150,7 @@ func run() {
 
 //entry for committee working process
 func Start() {
+	Initial()
 	run()
-	// Start console service
-
 }
 
