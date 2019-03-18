@@ -19,6 +19,7 @@ package main
 import (
 	"github.com/usechain/go-committee/node"
 	"github.com/usechain/go-committee/wnode"
+	"github.com/usechain/go-committee/console"
 )
 
 func main() {
@@ -28,4 +29,7 @@ func main() {
 	// Start committee service
 	go node.Start()
 
+	// Start console service
+	con := console.New(&node.GlobalConfig)
+	con.Start()
 }

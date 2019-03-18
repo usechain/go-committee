@@ -345,8 +345,8 @@ func startServer() error {
 		return err
 	}
 
-	fmt.Printf("my public key: %s \n", common.ToHex(crypto.FromECDSAPub(&asymKey.PublicKey)))
-	fmt.Println(server.NodeInfo().Enode)
+	log.Info("My public key: ", "pubkey", common.ToHex(crypto.FromECDSAPub(&asymKey.PublicKey)))
+	log.Info("Enode", "Enode", server.NodeInfo().Enode)
 
 	if *bootstrapMode {
 		configureNode()

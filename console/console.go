@@ -67,7 +67,7 @@ type Console struct {
 }
 
 // The New function creates an instance of the console type.
-func New(conf config.Usechain) *Console {
+func New(conf *config.Usechain) *Console {
 	con := &Console{}
 	con.commands = make(map[string]command)
 	con.Active = false
