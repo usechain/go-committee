@@ -73,7 +73,7 @@ func Initial() {
 			}
 		}
 	}
-	log.Info("Usechain Committee Console Initialization Complete")
+	fmt.Println("Usechain Committee Console Initialization Complete")
 	return
 }
 
@@ -129,7 +129,6 @@ func run() {
 
 		case config.Verifying:
 			log.Debug("Verifying...")
-
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
 			shamirkey.InitShamirCommitteeNumber(GlobalConfig)
 

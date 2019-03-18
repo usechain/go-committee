@@ -40,9 +40,9 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 
 	//Check whether a real committee
 	MAX_COMMITTEEMAN_COUNT, err := ctr.ContractCallParsed(rpc, coinbase, "MAX_COMMITTEEMAN_COUNT")
-	fmt.Println("MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT)
+	log.Info("Init committee number", "MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT)
 	if err != nil {
-		fmt.Println("read MAX_COMMITTEEMAN_COUNT failed",  err)
+		log.Error("read MAX_COMMITTEEMAN_COUNT failed",  err)
 		return
 	}
 	max, ok := (MAX_COMMITTEEMAN_COUNT[0]).(*big.Int)
@@ -54,7 +54,7 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 	//Check whether a real committee
 	Requirement, err := ctr.ContractCallParsed(rpc, coinbase, "Requirement")
 	if err != nil {
-		fmt.Println("read Requirement failed",  err)
+		log.Error("read Requirement failed",  err)
 		return
 	}
 	min, ok := (Requirement[0]).(*big.Int)
@@ -70,7 +70,7 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 		//Get committee asym key
 		getCommitteeAsymkey, err := ctr.ContractCallParsed(rpc, coinbase, "getCommitteeAsymkey", big.NewInt(int64(i)))
 		if err != nil {
-			fmt.Println("read committee failed",  err)
+			log.Error("read committee failed",  err)
 			return
 		}
 		asym, ok := (getCommitteeAsymkey[0]).(string)
@@ -94,7 +94,6 @@ func ShamirKeySharesGenerate(id int, keypool *core.KeyPool) {
 	if err != nil {
 		log.Crit(fmt.Sprintf("Failed to generate ephemeral node key: %v", err))
 	}
-	fmt.Println("******priv******", priv.D)
 
 	// generate shares
 	created, _, polynomials, err := sssa.Create256Bit(core.CommitteeRequires, core.CommitteeMax, priv.D)

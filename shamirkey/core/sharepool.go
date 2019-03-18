@@ -98,10 +98,10 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		ct :=[]byte(self.encryptedSet[A])
 		pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 		if err != nil {
-			fmt.Println("decryption: ", err.Error())
+			log.Error("decryption: ", err.Error())
 			continue
 		}
-		fmt.Println(string(pt))
+		log.Info("Decrypt received shared message", "msg", string(pt))
 
 		//Confirm stat with the contract
 		self.verifiedSet[A] = self.pendingSet[A]

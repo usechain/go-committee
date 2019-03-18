@@ -54,11 +54,11 @@ func main() {
 		}
 	}
 
-	fmt.Println("Please enter a used node url, example:\"http://10.30.43.237:8545\"")
+	fmt.Println("Please enter a used node url, example:\"http://10.30.43.237:8548\"")
 	fmt.Print("URL:")
 	url := console.Readline()
 	p, _ := config.ReadUsedConfig()
 	p.Url = url
 	config.UpdateUsedConfig(p)
-	fmt.Println("==========used.json Updated")
+	fmt.Println("Confit file used.json updated")
 }

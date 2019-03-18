@@ -60,7 +60,7 @@ func GetState(config Usechain) State {
 
 	//Check whether got key share already, if not try to generating
 	res, err = c.ContractCall(node, addr, "isEntireConfirmed")
-	log.Debug("Is Entire Confirmed? ", "res", res)
+	log.Debug("Is Entire Confirmed ", "res", res)
 	if err != nil || res == contract.ContractFalse {
 		log.Trace("Selected, but not all confirmed")
 		return WaittingOther
