@@ -22,6 +22,7 @@ import (
 	"github.com/usechain/go-usechain/cmd/utils"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/common"
+	"github.com/usechain/go-committee/console"
 	"github.com/usechain/go-committee/account"
 	"github.com/usechain/go-committee/contract/manager"
 	"github.com/usechain/go-committee/shamirkey"
@@ -40,7 +41,7 @@ var (
 )
 
 // init the committee global config
-func initial() {
+func Initial() {
 	log.Info("Committee node initializing ......")
 	time.Sleep(time.Second * 5)
 
@@ -64,7 +65,7 @@ func initial() {
 
 		log.Warn("Please unlock the committee account")
 		log.Warn("Enter \"committee.unlock \"passwd\"\"")
-		fmt.Print("========>>>")
+		fmt.Print("Please input password >>> ")
 		select {
 		case passwd := <- account.CommitteePasswd:
 			err = globalConfig.Kstore.TimedUnlock(signer, passwd, 0)
@@ -150,7 +151,12 @@ func run() {
 
 //entry for committee working process
 func Start() {
-	initial()
+	Initial()
+	con := console.New(globalConfig)
+
 	run()
+	// Start console service
+	con.Start()
+
 }
 

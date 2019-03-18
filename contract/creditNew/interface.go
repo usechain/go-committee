@@ -72,7 +72,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			} else {
 				certHashAddtoSet.Add(certHashToString)
 				// get encrypted string based on address as index
-				log.Info("certHash", "certHash", certHashToString)
+				log.Info("Receive certHash", "certHash", certHashToString)
 				getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase, "getHashData", certHash)
 
 				if err != nil {
@@ -86,7 +86,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[0]))
 					return
 				}
-				log.Info("Get identity string", "string", string(identity))
+				log.Debug("Get identity string", "string", string(identity))
 
 				m := identityInfo{}
 				err = json.Unmarshal([]byte(identity), &m)
@@ -137,20 +137,6 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 		return err
 	}
 
-	// verify hash
-	res4, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	log.Info("verifyHash transaction 1000", "hash", res4)
-	if err != nil {
-		log.Error("contract call", "err", err)
-	}
-
-	// verify hash
-	res5, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	log.Info("verifyHash transaction 1000", "hash", res5)
-	if err != nil {
-		log.Error("contract call", "err", err)
-	}
-
 	if res == contract.ContractZero || res == contract.ContractNull {
 		return nil
 	}
@@ -177,4 +163,3 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }
-

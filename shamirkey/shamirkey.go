@@ -180,8 +180,6 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 
 // The process for account verify, read the manage contract and handle un-register request
 func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
-	log.Debug("account verify process++++++++++++++++")
-
 	go func() {
 		for {
 			pool.CheckSharedMsg(usechain, core.CommitteeRequires)
@@ -192,16 +190,15 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 		select {
 		case v := <- pool.VerifiedChan:
 			pubkey := crypto.ToECDSAPub(common.FromHex(v))
-			fmt.Println("VerifiedChan pubkey=======================", pubkey)
+			log.Info("VerifiedChan pubkey", "pubkey", pubkey)
 
 			addr := crypto.PubkeyToAddress(*pubkey)
 			certHash := pool.GetVerifiedCertHash(v)
 
 			err := creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
 			if err == nil {
-				fmt.Println("send success")
+				log.Info("ConfirmCreditSystemAccount", "result", "success")
 			}
 		}
 	}
 }
-

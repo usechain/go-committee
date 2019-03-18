@@ -18,9 +18,9 @@ package verify
 
 import (
 	"math/big"
-	"fmt"
-	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-committee/shamirkey/core"
+	"github.com/usechain/go-usechain/crypto"
+	"github.com/usechain/go-usechain/log"
 )
 
 // Return the verfier id set based on the A address
@@ -32,7 +32,7 @@ func AccountVerifier(A string, max int) (idset []int) {
 		index := (int(id.Int64()) + i)%max
 		idset = append(idset, index)
 	}
-	fmt.Println("AccountVerifier idset", idset)
+	log.Info("AccountVerifier committee ID set", "idset", idset)
 	return
 }
 
