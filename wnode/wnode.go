@@ -95,6 +95,7 @@ var (
 	testMode       = flag.Bool("test", false, "use of predefined parameters for diagnostics (password, etc.)")
 	echoMode       = flag.Bool("echo", false, "echo mode: prints some arguments for diagnostics")
 
+	ArgMoonet 	 = flag.Bool("moonet", false, "lauch moonet config")
 	argVerbosity = flag.Int("verbosity", int(log.LvlDebug), "log verbosity level")
 	argTTL       = flag.Uint("ttl", 30, "time-to-live for messages in seconds")
 	argWorkTime  = flag.Uint("work", 5, "work time in seconds")
@@ -136,6 +137,10 @@ func processArgs() {
 		if err != nil {
 			utils.Fatalf("Failed to load file [%s]: %s.", *argIDFile, err)
 		}
+	}
+
+	if *ArgMoonet {
+		*ArgMoonet = true
 	}
 
 	const enodePrefix = "enode://"
