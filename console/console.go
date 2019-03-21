@@ -168,6 +168,17 @@ func (con *Console) Start() {
 	Prompter := liner.NewLiner()
 	defer Prompter.Close()
 
+	Prompter.SetCtrlCAborts(true)
+
+	Prompter.SetCompleter(func(line string) (c []string) {
+		for n, _ := range con.commands {
+			if strings.HasPrefix(n, strings.ToLower(line)) {
+				c = append(c, n)
+			}
+		}
+		return
+	})
+
 	if content, err := os.Open(histfile); err != nil {
 		Prompter.ReadHistory(strings.NewReader(strings.Join(nil, "\n")))
 		content.Close()
