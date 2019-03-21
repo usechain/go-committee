@@ -120,9 +120,9 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				log.Debug("get issuer string", "string", string(issuer))
 
 				issuerVerify := Issuer{}
-				err = json.Unmarshal(issuer, &issuerVerify)
+				err = json.Unmarshal([]byte(issuer), &issuerVerify)
 				if err != nil{
-					log.Debug( "Unmarshal failed: " , err )
+					log.Debug( "Unmarshal failed: " , "err", err )
 				}
 
 				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), certHashToString, id.Fpr)
