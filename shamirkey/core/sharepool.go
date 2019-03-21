@@ -52,17 +52,17 @@ func NewSharePool() *SharePool{
 	}
 }
 
-func (self *SharePool)GetVerifiedCertHash(key string) common.Hash {
+func (self *SharePool) GetVerifiedCertHash(key string) common.Hash {
 	return self.verifiedSet[key]
 }
 
-func (self *SharePool)SaveAccountSharedCache(A string, bsA string, id int) {
+func (self *SharePool) SaveAccountSharedCache(A string, bsA string, id int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.shareSet[A] = append(self.shareSet[A], bsA)
 }
 
-func (self *SharePool)SaveEncryptedData(A string, h common.Hash, data string) {
+func (self *SharePool) SaveEncryptedData(A string, h common.Hash, data string) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.encryptedSet[A] = data
@@ -102,6 +102,8 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			continue
 		}
 		log.Info("Decrypt received shared message", "msg", string(pt))
+
+
 
 		//Confirm stat with the contract
 		self.verifiedSet[A] = self.pendingSet[A]

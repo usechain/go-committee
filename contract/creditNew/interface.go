@@ -17,6 +17,7 @@ import (
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-usechain/common/hexutil"
 	"fmt"
+	"time"
 )
 
 const creditAddr = "0xfffffffffffffffffffffffffffffffff0000001"
@@ -74,7 +75,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				// get encrypted string based on address as index
 				log.Info("Receive certHash", "certHash", certHashToString)
 				getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase, "getHashData", certHash)
-
 				if err != nil {
 					log.Error("ContractCallParsed failed", "err", err)
 					return
@@ -94,6 +94,13 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 					log.Debug("Unmarshal failed")
 					return
 				}
+
+				issuer, ok := (getHashData[1]).([]byte)
+				if !ok {
+					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[1]))
+					return
+				}
+				log.Debug("get issuer string", "string", string(issuer))
 
 				// read requestor's public key
 				pubkey, ok := (getHashData[3]).(string)
@@ -120,6 +127,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			}
 		default:
 			processScan()
+			time.Sleep(time.Second * 5)
 		}
 	}
 }
