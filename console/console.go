@@ -189,7 +189,7 @@ func (con *Console) Start() {
 
 	// Loop while the value is true
 	for con.Active {
-		//fmt.Print(con.Prompt)
+
 		typed, err := Prompter.Prompt("> ")
 		if err != nil {
 			fmt.Println(err)
