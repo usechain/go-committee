@@ -17,7 +17,6 @@
 package core
 
 import (
-	"fmt"
 	"crypto/rand"
 	"sync"
 	//"encoding/hex"
@@ -28,6 +27,7 @@ import (
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/shamirkey/ecies"
 	"github.com/usechain/go-usechain/common/hexutil"
+	"time"
 )
 
 const chanSizeLimit = 10
@@ -80,7 +80,8 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 		bA, err := sssa.CombineECDSAPubkey(shares)				//bA
 		if err != nil {
-			fmt.Println("Fatal: combining: ", err)
+			time.Sleep(time.Second * 10)
+			log.Error("Combine error: ", err)
 			continue
 		}
 
@@ -102,8 +103,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			continue
 		}
 		log.Info("Decrypt received shared message", "msg", string(pt))
-
-
 
 		//Confirm stat with the contract
 		self.verifiedSet[A] = self.pendingSet[A]

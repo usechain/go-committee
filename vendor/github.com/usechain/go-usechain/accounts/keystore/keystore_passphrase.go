@@ -113,7 +113,7 @@ func (ks keyStorePassphrase) StoreKey(filename string, key *Key, auth string) er
 
 //////////////////////////////////////////////////////////////////////////
 var (
-	ErrABaddressFieldNotExist = errors.New("It seems that this account doesn't include a valid wanchain address field, please update your keyfile version")
+	ErrABaddressFieldNotExist = errors.New("It seems that this account doesn't include a valid  address field, please update your keyfile version")
 )
 
 // Implements GetEncryptedKey method of keystore interface

@@ -168,7 +168,7 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 
 	// verify hash
 	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	log.Info("verifyHash transaction", "hash", res)
+	log.Info("VerifyHash transaction", "hash", res)
 	if err != nil {
 		log.Error("contract call", "err", err)
 		return err

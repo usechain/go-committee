@@ -20,7 +20,7 @@ import (
 	"errors"
 	"math/big"
 	"github.com/usechain/go-committee/utils"
-	"fmt"
+	"github.com/usechain/subchain/log"
 )
 
 var (
@@ -222,7 +222,7 @@ func IsValidShare(candidate string) bool {
 	prime, _ = big.NewInt(0).SetString(DefaultPrimeStr, 10)
 
 	if (len(candidate)%88 != 0 && len(candidate)%132 != 0) || len(candidate) == 0{
-		fmt.Println("length error")
+		log.Error("Candidate length error")
 		return false
 	}
 
