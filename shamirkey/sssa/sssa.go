@@ -20,7 +20,7 @@ import (
 	"errors"
 	"math/big"
 	"github.com/usechain/go-committee/utils"
-	"github.com/usechain/subchain/log"
+	"github.com/usechain/go-usechain/log"
 )
 
 var (
