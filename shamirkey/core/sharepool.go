@@ -94,7 +94,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		bA, err := sssa.CombineECDSAPubkey(shares)				//bA
 		if err != nil {
 			time.Sleep(time.Second * 10)
-			log.Error("Combine error: ", err)
+			log.Error("Combine error: ", "error", err)
 			continue
 		}
 
@@ -112,7 +112,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		decrypedAndVerifyData := strings.Split(self.encryptedSet[A], "+")
 		ct,err :=hexutil.Decode(decrypedAndVerifyData[1])
 		if err != nil {
-			log.Error("Decode encdata", "err",err)
+			log.Error("Decode encdata", "err", err)
 		}
 		pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 		if err != nil {
