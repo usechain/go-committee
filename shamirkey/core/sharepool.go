@@ -28,6 +28,8 @@ import (
 	"github.com/usechain/go-committee/shamirkey/ecies"
 	"github.com/usechain/go-usechain/common/hexutil"
 	"time"
+	"encoding/json"
+	"strings"
 )
 
 const chanSizeLimit = 10
@@ -40,6 +42,17 @@ type SharePool struct {
 	verifiedSet		 map[string]common.Hash
 	VerifiedChan	 chan string
 	mu 				 sync.Mutex
+}
+
+type UserData struct {
+	Id       string `json:"id"`
+	CertType string `json:"certtype"`
+	Sex      string `json:"sex"`
+	Name     string `json:"name"`
+	EName    string `json:"ename"`
+	Nation   string `json:"nation"`
+	Addr     string `json:"addr"`
+	BirthDay string `json:"birthday"`
 }
 
 func NewSharePool() *SharePool{
@@ -96,11 +109,28 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		priv := ecies.ImportECDSA(privECDSA)
 
 		//Decryption
-		ct :=[]byte(self.encryptedSet[A])
+		decrypedAndVerifyData := strings.Split(self.encryptedSet[A], "+")
+		ct,err :=hexutil.Decode(decrypedAndVerifyData[1])
+		if err != nil {
+			log.Error("Decode encdata", "err",err)
+		}
 		pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 		if err != nil {
 			log.Error("decryption: ", err.Error())
 			continue
+		}
+
+		userData := UserData{}
+		err = json.Unmarshal(pt, &userData)
+		if err != nil{
+			log.Debug( "Unmarshal failed: " , "err", err )
+		}
+
+		id := userData.CertType + "-" + userData.Id
+		idHash :=hexutil.Encode(crypto.Keccak256Hash([]byte(id)).Bytes())
+		if idHash != decrypedAndVerifyData[0] {
+			log.Error("Verify certHash and verifyHash failed")
+			return
 		}
 		log.Info("Decrypt received shared message", "msg", string(pt))
 

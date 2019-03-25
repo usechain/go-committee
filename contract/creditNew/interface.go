@@ -139,9 +139,9 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				}
 				log.Debug("Get public key", "key", string(pubkey))
 
-				encData, _ := hexutil.Decode(id.Data)
+				decrypedAndVerifyData := strings.Join([]string{certHashToString, id.Data},"+")
 				sendPublickeyShared(usechain, nodelist, string(pubkey), max)
-				pool.SaveEncryptedData(pubkey, common.Hash(certHash), string(encData))
+				pool.SaveEncryptedData(pubkey, common.Hash(certHash), decrypedAndVerifyData)
 			}
 		}
 	}
