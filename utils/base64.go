@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"encoding/hex"
 	"encoding/base64"
-	"github.com/usechain/subchain/log"
+	"github.com/usechain/go-usechain/log"
 )
 
 /**
