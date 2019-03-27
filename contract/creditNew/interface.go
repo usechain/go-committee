@@ -227,7 +227,7 @@ func CheckUserRegisterCert(cert []byte, idhex string, fpr string) error {
 
 func parseRcaRsa() (*x509.Certificate, error) {
 	BaseDir := node.DefaultDataDir()
-	rcaFile, err := ioutil.ReadFile(BaseDir + "/rca.crt")
+	rcaFile, err := ioutil.ReadFile(BaseDir + "/mainnetCA.pem")
 	if err != nil {
 		log.Error("ReadFile err:", "err", err)
 		return nil, err
@@ -237,7 +237,7 @@ func parseRcaRsa() (*x509.Certificate, error) {
 	if rcaBlock == nil {
 		return nil, err
 	}
-
+	
 	Cert, err := x509.ParseCertificate(rcaBlock.Bytes)
 	if err != nil {
 		log.Error("ParseCertificate err:", "err", err)

@@ -100,11 +100,11 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 		hash := crypto.Keccak256(crypto.FromECDSAPub(bA))        //hash([b]A)
 
-		log.Debug("Received Hash", hexutil.Encode(hash[:]))
+		log.Debug("Received Hash", "hash", hexutil.Encode(hash[:]))
 		privECDSA, _ := crypto.ToECDSA(hash)
 
 		pub:=common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey))
-		log.Debug("Received Publick key",pub)
+		log.Debug("Received Publick key", "pub", pub)
 
 		priv := ecies.ImportECDSA(privECDSA)
 
