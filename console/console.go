@@ -124,7 +124,10 @@ func New(conf *config.Usechain) *Console {
 
 	con.Add("committee.unlock", "Unlock the committee account", func(typed string) {
 		arr := strings.Fields(typed)
-		if len(arr) != 2 {
+		if len(arr) == 1 {
+			arr = append(arr, "")
+		}
+		if len(arr) > 2{
 			fmt.Println("Please use committee.unlock in right format")
 			return
 		}
