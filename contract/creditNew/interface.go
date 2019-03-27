@@ -237,7 +237,7 @@ func parseRcaRsa() (*x509.Certificate, error) {
 	if rcaBlock == nil {
 		return nil, err
 	}
-	
+
 	Cert, err := x509.ParseCertificate(rcaBlock.Bytes)
 	if err != nil {
 		log.Error("ParseCertificate err:", "err", err)
