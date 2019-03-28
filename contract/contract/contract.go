@@ -136,6 +136,7 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 		fmt.Println("account:", err)
 	}
 
+	// TODO NETWORK id
 	signedTx, err := ks.SignTx(ac, tx, big.NewInt(2))
 	if err != nil {
 		log.Error("Sign the committee Msg failed, Please unlock the verifier account", "err", err)

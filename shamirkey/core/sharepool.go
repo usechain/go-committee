@@ -19,7 +19,9 @@ package core
 import (
 	"crypto/rand"
 	"sync"
-	//"encoding/hex"
+	"time"
+	"encoding/json"
+	"strings"
 	"github.com/usechain/go-committee/shamirkey/sssa"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/common"
@@ -27,9 +29,6 @@ import (
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/shamirkey/ecies"
 	"github.com/usechain/go-usechain/common/hexutil"
-	"time"
-	"encoding/json"
-	"strings"
 )
 
 const chanSizeLimit = 10
@@ -119,7 +118,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			log.Error("decryption: ", err.Error())
 			continue
 		}
-
 		userData := UserData{}
 		err = json.Unmarshal(pt, &userData)
 		if err != nil{
@@ -132,6 +130,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			log.Error("Verify certHash and verifyHash failed")
 			return
 		}
+
 		log.Info("Decrypt received shared message", "msg", string(pt))
 
 		//Confirm stat with the contract

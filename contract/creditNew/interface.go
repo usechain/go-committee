@@ -4,6 +4,13 @@ import (
 	"math/big"
 	"reflect"
 	"crypto/ecdsa"
+  "fmt"
+	"time"
+	"encoding/pem"
+	"crypto/x509"
+	"strings"
+	"io/ioutil"
+  "encoding/json"
 	"github.com/usechain/go-committee/contract/contract"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/shamirkey/sssa"
@@ -13,17 +20,9 @@ import (
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/crypto"
-	"encoding/json"
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-usechain/common/hexutil"
 	"github.com/usechain/go-usechain/node"
-
-	"fmt"
-	"time"
-	"encoding/pem"
-	"crypto/x509"
-	"strings"
-	"io/ioutil"
 )
 
 const creditAddr = "0xfffffffffffffffffffffffffffffffff0000001"
@@ -145,7 +144,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			}
 		}
 	}
-
 	loop := true
 	for loop {
 		select {

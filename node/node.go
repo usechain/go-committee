@@ -19,6 +19,7 @@ package node
 import (
 	"time"
 	"sync"
+  "fmt"
 	"github.com/usechain/go-usechain/cmd/utils"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/common"
@@ -27,9 +28,7 @@ import (
 	"github.com/usechain/go-committee/shamirkey"
 	"github.com/usechain/go-committee/shamirkey/core"
 	"github.com/usechain/go-committee/node/config"
-	//"github.com/usechain/go-committee/contract/creditTesting"
 	"github.com/usechain/go-committee/contract/creditNew"
-	"fmt"
 	"github.com/usechain/go-committee/wnode"
 )
 
@@ -44,7 +43,6 @@ var (
 
 // init the committee global config
 func Initial() {
-
 	log.Info("Committee node initializing ......")
 	time.Sleep(time.Second * 5)
 
