@@ -221,7 +221,6 @@ func Combine(shares []string) (string, error) {
 func IsValidShare(candidate string) bool {
 	// Set constant prime across the package
 	prime, _ = big.NewInt(0).SetString(DefaultPrimeStr, 10)
-	log.Debug("IsValidShare share ", "share", candidate)
 	if (len(candidate)%88 != 0 && len(candidate)%132 != 0) || len(candidate) == 0{
 		log.Error("Candidate length error")
 		return false
