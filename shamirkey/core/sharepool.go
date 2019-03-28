@@ -17,10 +17,11 @@
 package core
 
 import (
-	"fmt"
 	"crypto/rand"
 	"sync"
-	//"encoding/hex"
+	"time"
+	"encoding/json"
+	"strings"
 	"github.com/usechain/go-committee/shamirkey/sssa"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/common"
@@ -42,6 +43,17 @@ type SharePool struct {
 	mu 				 sync.Mutex
 }
 
+type UserData struct {
+	Id       string `json:"id"`
+	CertType string `json:"certtype"`
+	Sex      string `json:"sex"`
+	Name     string `json:"name"`
+	EName    string `json:"ename"`
+	Nation   string `json:"nation"`
+	Addr     string `json:"addr"`
+	BirthDay string `json:"birthday"`
+}
+
 func NewSharePool() *SharePool{
 	return &SharePool{
 		shareSet: make(map[string][]string),
@@ -52,17 +64,17 @@ func NewSharePool() *SharePool{
 	}
 }
 
-func (self *SharePool)GetVerifiedCertHash(key string) common.Hash {
+func (self *SharePool) GetVerifiedCertHash(key string) common.Hash {
 	return self.verifiedSet[key]
 }
 
-func (self *SharePool)SaveAccountSharedCache(A string, bsA string, id int) {
+func (self *SharePool) SaveAccountSharedCache(A string, bsA string, id int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.shareSet[A] = append(self.shareSet[A], bsA)
 }
 
-func (self *SharePool)SaveEncryptedData(A string, h common.Hash, data string) {
+func (self *SharePool) SaveEncryptedData(A string, h common.Hash, data string) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.encryptedSet[A] = data
@@ -80,27 +92,45 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 		bA, err := sssa.CombineECDSAPubkey(shares)				//bA
 		if err != nil {
-			fmt.Println("Fatal: combining: ", err)
+			time.Sleep(time.Second * 10)
+			log.Error("Combine error: ", "error", err)
 			continue
 		}
 
 		hash := crypto.Keccak256(crypto.FromECDSAPub(bA))        //hash([b]A)
 
-		log.Debug("Received Hash", hexutil.Encode(hash[:]))
+		log.Debug("Received Hash", "hash", hexutil.Encode(hash[:]))
 		privECDSA, _ := crypto.ToECDSA(hash)
 
 		pub:=common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey))
-		log.Debug("Received Publick key",pub)
+		log.Debug("Received Publick key", "pub", pub)
 
 		priv := ecies.ImportECDSA(privECDSA)
 
 		//Decryption
-		ct :=[]byte(self.encryptedSet[A])
+		decrypedAndVerifyData := strings.Split(self.encryptedSet[A], "+")
+		ct,err :=hexutil.Decode(decrypedAndVerifyData[1])
+		if err != nil {
+			log.Error("Decode encdata", "err", err)
+		}
 		pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 		if err != nil {
 			log.Error("decryption: ", err.Error())
 			continue
 		}
+		userData := UserData{}
+		err = json.Unmarshal(pt, &userData)
+		if err != nil{
+			log.Debug( "Unmarshal failed: " , "err", err )
+		}
+
+		id := userData.CertType + "-" + userData.Id
+		idHash :=hexutil.Encode(crypto.Keccak256Hash([]byte(id)).Bytes())
+		if idHash != decrypedAndVerifyData[0] {
+			log.Error("Verify certHash and verifyHash failed")
+			return
+		}
+
 		log.Info("Decrypt received shared message", "msg", string(pt))
 
 		//Confirm stat with the contract

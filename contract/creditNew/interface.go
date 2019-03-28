@@ -4,6 +4,13 @@ import (
 	"math/big"
 	"reflect"
 	"crypto/ecdsa"
+  "fmt"
+	"time"
+	"encoding/pem"
+	"crypto/x509"
+	"strings"
+	"io/ioutil"
+  "encoding/json"
 	"github.com/usechain/go-committee/contract/contract"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/shamirkey/sssa"
@@ -13,26 +20,35 @@ import (
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/crypto"
-	"encoding/json"
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-usechain/common/hexutil"
-	"fmt"
+	"github.com/usechain/go-usechain/node"
 )
 
 const creditAddr = "0xfffffffffffffffffffffffffffffffff0000001"
 const creditABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"CommitteeAddr\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"getHashData\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"},{\"name\":\"\",\"type\":\"bytes\"},{\"name\":\"\",\"type\":\"bool\"},{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnregisterHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getUserInfo\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"},{\"name\":\"\",\"type\":\"string\"},{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bytes32[]\"},{\"name\":\"\",\"type\":\"bool[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"isMainAccount\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"hashKey\",\"type\":\"bytes32\"},{\"name\":\"_identity\",\"type\":\"bytes\"},{\"name\":\"_issuer\",\"type\":\"bytes\"}],\"name\":\"addNewIdentity\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"isSigner\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"unregister\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"verifyBase\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"test\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"},{\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"verifyHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBaseData\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnregisterLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"renounceSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"addSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_publicKey\",\"type\":\"string\"},{\"name\":\"_hashKey\",\"type\":\"bytes32\"},{\"name\":\"_identity\",\"type\":\"bytes\"},{\"name\":\"_issuer\",\"type\":\"bytes\"}],\"name\":\"register\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewUserRegister\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewIdentity\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerRemoved\",\"type\":\"event\"}]"
 
 //The struct of the identity
-type identityInfo struct {
-	Data 		string 		`json:"data"`
-	Nation		string		`json:"nation"`
-	Entity 	    string		`json:"entity"`
-	Fpr 		string		`json:"fpr"`
-	Alg			string		`json:"alg"`
-	Certtype	string 		`json:"certtype"`
-	Ver			string 		`json:"ver"`
-	Cdate		string		`json:"cdate"`
+type Identity struct {
+	Data     string `json:"data"`
+	Nation   string `json:"nation"`
+	Entity   string `json:"entity"`
+	Fpr      string `json:"fpr"`
+	Alg      string `json:"alg"`
+	CertType string `json:"certtype"`
+	Ver      string `json:"ver"`
+	Cdate    string `json:"cdate"`
 }
+
+type Issuer struct {
+	Cert   string      `json:"cert"`
+	Alg    string      `json:"alg"`
+	UseId  string      `json:"useid"`
+	PubKey *big.Int `json:"pubkey"`
+	Cdate  string      `json:"cdate"`
+	Edate  string      `json:"edate"`
+}
+
 
 func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, nodelist []string, max int) {
 	rpc := usechain.NodeRPC
@@ -74,7 +90,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				// get encrypted string based on address as index
 				log.Info("Receive certHash", "certHash", certHashToString)
 				getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase, "getHashData", certHash)
-
 				if err != nil {
 					log.Error("ContractCallParsed failed", "err", err)
 					return
@@ -88,10 +103,30 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				}
 				log.Debug("Get identity string", "string", string(identity))
 
-				m := identityInfo{}
-				err = json.Unmarshal([]byte(identity), &m)
+				id := Identity{}
+				err = json.Unmarshal([]byte(identity), &id)
 				if err != nil {
-					log.Debug("Unmarshal failed")
+					log.Debug( "Unmarshal failed: " , err )
+					return
+				}
+
+				// read issuer info
+				issuer, ok := (getHashData[1]).([]byte)
+				if !ok {
+					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[1]))
+					return
+				}
+				log.Debug("get issuer string", "string", string(issuer))
+
+				issuerVerify := Issuer{}
+				err = json.Unmarshal([]byte(issuer), &issuerVerify)
+				if err != nil{
+					log.Debug( "Unmarshal failed: " , "err", err )
+				}
+
+				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), certHashToString, id.Fpr)
+				if err != nil {
+					log.Error("CheckUserRegisterCert failed", err)
 					return
 				}
 
@@ -103,13 +138,12 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				}
 				log.Debug("Get public key", "key", string(pubkey))
 
-				encData, _ := hexutil.Decode(m.Data)
+				decrypedAndVerifyData := strings.Join([]string{certHashToString, id.Data},"+")
 				sendPublickeyShared(usechain, nodelist, string(pubkey), max)
-				pool.SaveEncryptedData(pubkey, common.Hash(certHash), string(encData))
+				pool.SaveEncryptedData(pubkey, common.Hash(certHash), decrypedAndVerifyData)
 			}
 		}
 	}
-
 	loop := true
 	for loop {
 		select {
@@ -120,6 +154,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			}
 		default:
 			processScan()
+			time.Sleep(time.Second * 5)
 		}
 	}
 }
@@ -131,7 +166,7 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 
 	// verify hash
 	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	log.Info("verifyHash transaction", "hash", res)
+	log.Info("VerifyHash transaction", "hash", res)
 	if err != nil {
 		log.Error("contract call", "err", err)
 		return err
@@ -162,4 +197,49 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 		log.Info("Send message to Verifier", "id", id, "node", nodelist[id])
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
+}
+
+func CheckUserRegisterCert(cert []byte, idhex string, fpr string) error {
+	rcaCert, err := parseRcaRsa()
+	certBlock, _ := pem.Decode(cert)
+	if certBlock == nil {
+		log.Error("User's cert not found!")
+		return err
+	}
+	parsed, err := x509.ParseCertificate(certBlock.Bytes)
+
+	err = parsed.CheckSignatureFrom(rcaCert)
+	if err != nil {
+		log.Error("Not from the official RCA")
+		return err
+	}
+
+	subject := parsed.Subject.String()
+	if !strings.Contains(subject, idhex) || !strings.Contains(subject, fpr) {
+		log.Error("Not the right cert of this user")
+		return err
+	}
+
+	return nil
+}
+
+func parseRcaRsa() (*x509.Certificate, error) {
+	BaseDir := node.DefaultDataDir()
+	rcaFile, err := ioutil.ReadFile(BaseDir + "/mainnetCA.pem")
+	if err != nil {
+		log.Error("ReadFile err:", "err", err)
+		return nil, err
+	}
+
+	rcaBlock, _ := pem.Decode(rcaFile)
+	if rcaBlock == nil {
+		return nil, err
+	}
+
+	Cert, err := x509.ParseCertificate(rcaBlock.Bytes)
+	if err != nil {
+		log.Error("ParseCertificate err:", "err", err)
+		return nil, err
+	}
+	return Cert, nil
 }

@@ -20,7 +20,7 @@ import (
 	"errors"
 	"math/big"
 	"github.com/usechain/go-committee/utils"
-	"fmt"
+	"github.com/usechain/go-usechain/log"
 )
 
 var (
@@ -220,9 +220,9 @@ func Combine(shares []string) (string, error) {
 func IsValidShare(candidate string) bool {
 	// Set constant prime across the package
 	prime, _ = big.NewInt(0).SetString(DefaultPrimeStr, 10)
-
+	log.Debug("IsValidShare share ", "share", candidate)
 	if (len(candidate)%88 != 0 && len(candidate)%132 != 0) || len(candidate) == 0{
-		fmt.Println("length error")
+		log.Error("Candidate length error")
 		return false
 	}
 
@@ -230,7 +230,10 @@ func IsValidShare(candidate string) bool {
 	for j := 0; j < count; j++ {
 		part := candidate[j*44 : (j+1)*44]
 		decode := utils.FromBase64(part)
+		log.Debug("decode share", "share part", decode)
 		if decode.Cmp(big.NewInt(0)) == -1 || decode.Cmp(prime) == 1 {
+			log.Debug("compare result ", "res1", decode.Cmp(big.NewInt(0)) == -1)
+			log.Debug("compare result ", "res2", decode.Cmp(prime) == 1)
 			return false
 		}
 	}

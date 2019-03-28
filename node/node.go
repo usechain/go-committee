@@ -19,6 +19,7 @@ package node
 import (
 	"time"
 	"sync"
+  "fmt"
 	"github.com/usechain/go-usechain/cmd/utils"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/common"
@@ -27,9 +28,8 @@ import (
 	"github.com/usechain/go-committee/shamirkey"
 	"github.com/usechain/go-committee/shamirkey/core"
 	"github.com/usechain/go-committee/node/config"
-	//"github.com/usechain/go-committee/contract/creditTesting"
 	"github.com/usechain/go-committee/contract/creditNew"
-	"fmt"
+	"github.com/usechain/go-committee/wnode"
 )
 
 var (
@@ -38,6 +38,8 @@ var (
 	keypool		  *core.KeyPool
 	wg			  sync.WaitGroup
 )
+//var ArgMoonet = flag.String("moonet", "", "lauch moonet config")
+
 
 // init the committee global config
 func Initial() {
@@ -56,7 +58,7 @@ func Initial() {
 	if addr == "" || !common.IsHexAddress(addr) {
 		utils.Fatalf("Please fill in correct committee address in conf")
 	} else {
-		GlobalConfig.Kstore = account.DefaultKeystore()
+		GlobalConfig.Kstore = account.DefaultKeystore(*wnode.ArgMoonet)
 		signer, err := account.CommitteeAccount(common.HexToAddress(addr), GlobalConfig.Kstore)
 		if err != nil {
 			utils.Fatalf("Please import committee corresponding keystore file")

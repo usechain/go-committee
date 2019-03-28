@@ -101,7 +101,7 @@ func TestCommitteeAccount(t *testing.T) {
 	log.Root().SetHandler(log.LvlFilterHandler(log.LvlTrace, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
 
 	addr := "0x36B3c80a4FAD8aBd2d9b0d274Ba3564634380515"
-	ks := DefaultKeystore()
+	ks := DefaultKeystore("")
 	_, err := CommitteeAccount(common.HexToAddress(addr), ks)
 	if err != nil {
 		fmt.Println("Not found", err)

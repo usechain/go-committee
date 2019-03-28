@@ -22,6 +22,7 @@ import (
 	"github.com/usechain/go-committee/console"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-usechain/log"
+	"github.com/usechain/go-committee/wnode"
 )
 
 func main() {
@@ -29,7 +30,7 @@ func main() {
 	fmt.Print("Please enter passwd:")
 	passwd := console.Readline()
 
-	ks := account.DefaultKeystore()
+	ks := account.DefaultKeystore(*wnode.ArgMoonet)
 	ac := account.NewAccount(ks, passwd)
 	fmt.Printf("Account:%s generated!\n", ac.Address.Hex())
 

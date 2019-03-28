@@ -40,7 +40,8 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 
 	//Check whether a real committee
 	MAX_COMMITTEEMAN_COUNT, err := ctr.ContractCallParsed(rpc, coinbase, "MAX_COMMITTEEMAN_COUNT")
-	log.Info("Init committee number", "MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT)
+
+	log.Info("Init committee number", "MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT[0])
 	if err != nil {
 		log.Error("read MAX_COMMITTEEMAN_COUNT failed",  err)
 		return
@@ -159,17 +160,17 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 
 		switch m.Type {
 		case msg.PolynomialShare:
-			log.Debug("received polynomial shares")
+			log.Debug("Received polynomial shares")
 			keypool.InsertPolynomialShare(m.Sender, msg.UnpackPolynomialShare(m.Data))
 		case msg.Keyshare:
-			log.Debug("received key shares")
+			log.Debug("Received key shares")
 			keypool.InsertPrivateKeyShare(m.Sender, string(m.Data[0]))
 		case msg.NewCommitteeLogInMsg:
-			log.Debug("detected a new logged in committee")
+			log.Debug("Detected a new logged in committee")
 			ShamirSharesReponse(m.Sender, keypool)
 		case msg.VerifyShareMsg:
 			A, bsA := msg.UnpackVerifyShare(m.Data)
-			log.Debug("received a new shared for account verifying", "A", A)
+			log.Debug("Received a new shared for account verifying", "A", A)
 			if verify.IsAccountVerifier(A, core.CommitteeMax, p.CommitteeID) {
 				pool.SaveAccountSharedCache(A, bsA, m.Sender)
 			}

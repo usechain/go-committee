@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"encoding/hex"
 	"encoding/base64"
+	"github.com/usechain/go-usechain/log"
 )
 
 /**
@@ -62,6 +63,7 @@ func fromBase64(number string) *big.Int {
 	hexdata := hex.EncodeToString(bytedata)
 	result, ok := big.NewInt(0).SetString(hexdata, 16)
 	if ok == false {
+		log.Error("fromBase64 decode error", "result", result)
 		return big.NewInt(-1)
 	}
 

@@ -124,7 +124,10 @@ func New(conf *config.Usechain) *Console {
 
 	con.Add("committee.unlock", "Unlock the committee account", func(typed string) {
 		arr := strings.Fields(typed)
-		if len(arr) != 2 {
+		if len(arr) == 1 {
+			arr = append(arr, "")
+		}
+		if len(arr) > 2{
 			fmt.Println("Please use committee.unlock in right format")
 			return
 		}
@@ -168,6 +171,17 @@ func (con *Console) Start() {
 	Prompter := liner.NewLiner()
 	defer Prompter.Close()
 
+	Prompter.SetCtrlCAborts(true)
+
+	Prompter.SetCompleter(func(line string) (c []string) {
+		for n, _ := range con.commands {
+			if strings.HasPrefix(n, strings.ToLower(line)) {
+				c = append(c, n)
+			}
+		}
+		return
+	})
+
 	if content, err := os.Open(histfile); err != nil {
 		Prompter.ReadHistory(strings.NewReader(strings.Join(nil, "\n")))
 		content.Close()
@@ -178,7 +192,6 @@ func (con *Console) Start() {
 
 	// Loop while the value is true
 	for con.Active {
-		//fmt.Print(con.Prompt)
 		typed, err := Prompter.Prompt("> ")
 		if err != nil {
 			fmt.Println(err)

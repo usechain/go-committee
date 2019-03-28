@@ -19,18 +19,22 @@ package account
 import (
 	"fmt"
 	"path/filepath"
-	"github.com/usechain/go-committee/utils"
 	"github.com/usechain/go-usechain/accounts"
 	"github.com/usechain/go-usechain/accounts/keystore"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/log"
+	"github.com/usechain/go-usechain/node"
 )
 
 var CommitteePasswd = make(chan string, 1)
 
-func DefaultKeystore() *keystore.KeyStore{
+func DefaultKeystore(argMoonet bool) (ks *keystore.KeyStore){
 	// Create an encrypted keystore with standard crypto parameters
-	ks := keystore.NewKeyStore(filepath.Join(utils.DefaultCommDataDir(), "keystore"), keystore.StandardScryptN, keystore.StandardScryptP)
+	if argMoonet {
+		ks = keystore.NewKeyStore(filepath.Join(node.DefaultDataDir(), "moonet/keystore"), keystore.StandardScryptN, keystore.StandardScryptP)
+	} else{
+		ks = keystore.NewKeyStore(filepath.Join(node.DefaultDataDir(), "keystore"), keystore.StandardScryptN, keystore.StandardScryptP)
+	}
 	return ks
 }
 

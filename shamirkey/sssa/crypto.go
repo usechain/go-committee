@@ -21,6 +21,7 @@ import (
 	"crypto/ecdsa"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-committee/utils"
+	"github.com/usechain/go-usechain/log"
 )
 
 type PrivateShare struct {
@@ -60,6 +61,7 @@ func GeneratePrivKey(key *big.Int) *ecdsa.PrivateKey {
 func ExtractPrivateShare(privshare string) *ecdsa.PrivateKey {
 	// ...ensure that it is valid...
 	if IsValidShare(privshare) == false {
+		log.Error("ExtractPrivateShare failed", "error", false)
 		return nil
 	}
 	priv := utils.FromBase64(privshare[44:])
