@@ -26,6 +26,7 @@ import (
 var (
 	ErrCannotRequireMoreShares = errors.New("cannot require more shares then existing")
 	ErrOneOfTheSharesIsInvalid = errors.New("one of the shares is invalid")
+	ErrInvalidPubkey = errors.New("Invalid publick key")
 )
 
 /**
