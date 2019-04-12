@@ -44,7 +44,7 @@ type Issuer struct {
 	Cert   string      `json:"cert"`
 	Alg    string      `json:"alg"`
 	UseId  string      `json:"useid"`
-	PubKey *big.Int `json:"pubkey"`
+	PubKey interface{} `json:"-"`
 	Cdate  string      `json:"cdate"`
 	Edate  string      `json:"edate"`
 }
