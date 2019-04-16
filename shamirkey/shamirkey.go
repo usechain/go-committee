@@ -40,12 +40,12 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 
 	//Check whether a real committee
 	MAX_COMMITTEEMAN_COUNT, err := ctr.ContractCallParsed(rpc, coinbase, "MAX_COMMITTEEMAN_COUNT")
-
-	log.Info("Init committee number", "MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT[0])
 	if err != nil {
 		log.Error("read MAX_COMMITTEEMAN_COUNT failed",  err)
 		return
 	}
+	log.Info("Init committee number", "MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT[0])
+
 	max, ok := (MAX_COMMITTEEMAN_COUNT[0]).(*big.Int)
 	if !ok {
 		log.Error("It's not ok for", "type", reflect.TypeOf(MAX_COMMITTEEMAN_COUNT[0]))

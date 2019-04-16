@@ -196,7 +196,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	}
 }
 
-
 func GeneratePKPairFromSubAddress(w []byte) (*ecdsa.PublicKey, *ecdsa.PublicKey, error) {
 	if len(w) != 66 {
 		fmt.Println(len(w))
