@@ -438,7 +438,7 @@ func GenSubRingSignData(msg, privateKey, addr string, statedb *state.StateDB) (s
 	publicKeyset := make([]string, 0)
 	for _, AS := range ASslice {
 		ASbyte, _ := hex.DecodeString(AS)
-		pk1, _, err := keystore.GeneratePKPairFromABaddress(ASbyte)
+		pk1, _, err := keystore.GeneratePKPairFromSubAddress(ASbyte)
 		if err != nil {
 		}
 		pub := common.ToHex(crypto.FromECDSAPub(pk1))

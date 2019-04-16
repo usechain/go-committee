@@ -234,7 +234,7 @@ func toISO8601(t time.Time) string {
 
 
 // GeneratePKPairFromABddress represents the keystore to retrieve public key-pair from given Address
-func GeneratePKPairFromABaddress(w []byte) (*ecdsa.PublicKey, *ecdsa.PublicKey, error) {
+func GeneratePKPairFromSubAddress(w []byte) (*ecdsa.PublicKey, *ecdsa.PublicKey, error) {
 	if len(w) != common.ABaddressLength {
 		fmt.Println(len(w))
 		return nil, nil, ErrABaddressInvalid
@@ -303,7 +303,7 @@ func ABkeyFileName(keyAddr common.ABaddress) string {
 
 // newABKey generate ABaccount Key
 func newABKey(abBaseAddr common.ABaddress,AprivKey *ecdsa.PrivateKey) (*Key, error) {
-	A, B, err := GeneratePKPairFromABaddress(abBaseAddr[:])
+	A, B, err := GeneratePKPairFromSubAddress(abBaseAddr[:])
 	if err != nil {
 		return nil, err
 	}

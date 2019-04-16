@@ -199,6 +199,14 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 			if err == nil {
 				log.Info("ConfirmCreditSystemAccount", "result", "success")
 			}
+		case s := <- pool.VerifiedSubChan:
+			pubkey := crypto.ToECDSAPub(common.FromHex(s))
+			addr := crypto.PubkeyToAddress(*pubkey)
+			fmt.Println("sub address", addr)
+			err := creditNew.ConfirmSubAccount(usechain, addr)
+			if err == nil {
+				log.Info("ConfirmSubAccount", "result", "success")
+			}
 		}
 	}
 }
