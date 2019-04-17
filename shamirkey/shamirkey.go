@@ -200,6 +200,7 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 				log.Info("ConfirmCreditSystemAccount", "result", "success")
 			}
 		case s := <- pool.VerifiedSubChan:
+
 			pubkey := crypto.ToECDSAPub(common.FromHex(s))
 			addr := crypto.PubkeyToAddress(*pubkey)
 			fmt.Println("sub address", addr)

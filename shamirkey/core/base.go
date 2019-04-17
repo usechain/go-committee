@@ -20,6 +20,6 @@ var (
 	CommitteeMax = 5				//Just default params, will update from contract when process running
 	CommitteeRequires = 3
 	CommitteeNodeList []string      // All committer
-	VerifierRequires = 2
+	VerifierRequires = 3
 )
 

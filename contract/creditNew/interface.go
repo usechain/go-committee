@@ -56,7 +56,8 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 	certHashAddtoSet := NewSet()
 	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
 	ethQuitCh := make(chan struct{}, 1)
-
+	subSet := NewSet()
+	var HS []string
 	processScan := func() {
 		// get unconfirmed main address number
 		UnregisterLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnregisterLen")
@@ -181,10 +182,23 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				return
 			}
 
-			sendPublickeyShared(usechain, nodelist, string(subPubkey), max)
-			pool.SaveEncryptedSub(subPubkey, encryptedAS)
+			if subSet.Has(string(subPubkey)) {
+				continue
+			} else {
+				subSet.Add(string(subPubkey))
+				sendPublickeyShared(usechain, nodelist, string(subPubkey), max)
+				pool.SaveEncryptedSub(subPubkey, encryptedAS)
+			}
 		}
 	}
+
+	processSub := func(subdata *core.SubData) {
+		sendPublickeyShared(usechain, nodelist, subdata.A, max)
+		HS = append(HS, subdata.H)
+		HS = append(HS, subdata.S)
+		pool.SaveSubData(subdata.A, HS)
+	}
+
 	loop := true
 	for loop {
 		select {
@@ -193,6 +207,11 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				fmt.Println("[SCAN CLOSED] ScanCreditSystemAccount thread exitCh!")
 				loop = false
 			}
+
+		case subdata := <- pool.SubChan:
+			fmt.Println("processSub")
+			processSub(subdata)
+
 		default:
 			processScan()
 			processSubScan()

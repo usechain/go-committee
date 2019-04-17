@@ -33,6 +33,7 @@ import (
 	"fmt"
 	"github.com/btcsuite/btcd/btcec"
 	"crypto/ecdsa"
+	"encoding/hex"
 )
 
 const chanSizeLimit = 10
@@ -48,7 +49,21 @@ type SharePool struct {
 	pendingSubSet	 map[string]string
 	verifiedSubSet	 map[string]string
 	VerifiedSubChan  chan string
+
+	encryptedHSet  map[string][]string
+	pendingHSet	 map[string][]string
+	verifiedHSet	 map[string][]string
+
+	SubChan		chan *SubData
+
+	SubFailedDecrypted chan string
 	mu 				 sync.Mutex
+}
+
+type SubData struct {
+	H string
+	A string
+	S string
 }
 
 type UserData struct {
@@ -74,6 +89,12 @@ func NewSharePool() *SharePool{
 		pendingSubSet: make(map[string]string),
 		verifiedSubSet: make(map[string]string),
 		VerifiedSubChan:make(chan string, chanSizeLimit),
+		SubChan:make(chan *SubData, chanSizeLimit),
+
+		encryptedHSet : make(map[string][]string),
+		pendingHSet : make(map[string][]string),
+		verifiedHSet: make(map[string][]string),
+
 	}
 }
 
@@ -101,6 +122,15 @@ func (self *SharePool) SaveEncryptedSub(A string, data string) {
 	self.pendingSubSet[A] = data
 }
 
+func (self *SharePool) SaveSubData(A string, HS []string) {
+	self.mu.Lock()
+	defer self.mu.Unlock()
+	self.encryptedHSet[A] = HS
+	self.pendingHSet[A] = HS
+	fmt.Println("encryptedHSet======", self.encryptedHSet)
+}
+
+
 func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
@@ -109,6 +139,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		if len(shares) < requires {
 			continue
 		}
+
 		bA, err := sssa.CombineECDSAPubkey(shares) //bA
 		if err != nil {
 			time.Sleep(time.Second * 10)
@@ -118,11 +149,11 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 		hash := crypto.Keccak256(crypto.FromECDSAPub(bA)) //hash([b]A)
 
-		log.Debug("Received Hash bA", "hash(bA)", hexutil.Encode(hash[:]))
+		log.Debug("Generate Hash bA", "hash(bA)", hexutil.Encode(hash[:]))
 		privECDSA, _ := crypto.ToECDSA(hash)
 
 		pub := common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey))
-		log.Debug("Received Publick key", "pub", pub)
+		log.Debug("Generate Publick key", "pub", pub)
 
 		priv := ecies.ImportECDSA(privECDSA)
 
@@ -160,7 +191,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			self.VerifiedChan <- A
 			delete(self.pendingSet, A)
 			delete(self.encryptedSet, A)
-			delete(self.shareSet, A)
 		}
 
 		if data, ok := self.encryptedSubSet[A]; ok {
@@ -173,31 +203,72 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 			if err != nil {
 				log.Error("decryption: ", "err", err.Error())
-				continue
-			}
-			log.Info("Decrypt received shared message", "msg", string(pt))
-
-			A1, S1, err := GeneratePKPairFromSubAddress(pt)
-			if err !=nil {
-				log.Error("GeneratePKPairFromSubAddress", "err", err)
-			}
-			A11:=common.ToHex(crypto.FromECDSAPub(A1))
-			S11:=common.ToHex(crypto.FromECDSAPub(S1))
-
-			fmt.Println("A1:::", A11)
-			fmt.Println("S1---===", S11)
-
-			pub := generateH(A1, S1, privECDSA)
-			AA := common.ToHex(crypto.FromECDSAPub(&pub))
-			if AA == A {
-				//Confirm stat with the contract
-				self.verifiedSubSet[A] = self.verifiedSubSet[A]
-				self.VerifiedSubChan <- A
+				// TODO:   SubFailedDecrypted 添加到合约
+				self.SubFailedDecrypted <- A
 				delete(self.pendingSubSet, A)
 				delete(self.encryptedSubSet, A)
 				delete(self.shareSet, A)
+				continue
+			}
+
+			log.Info("Decrypt received shared message", "msg", string(pt))
+			ASbyte, _ := hex.DecodeString(string(pt))
+			A1, S1, err := GeneratePKPairFromSubAddress(ASbyte)
+			if err !=nil {
+				log.Error("GeneratePKPairFromSubAddress", "err", err)
+				return
+			}
+
+			A11:=common.ToHex(crypto.FromECDSAPub(A1))
+			S11:=common.ToHex(crypto.FromECDSAPub(S1))
+			fmt.Println("A1:::", A11)
+			fmt.Println("S1---===", S11)
+
+			if A1 != nil && S1 !=nil {
+				subdata := &SubData{
+					H: A,
+					A: A11,
+					S: S11,
+				}
+				self.SubChan <- subdata
+				self.verifiedSubSet[A] = self.pendingSubSet[A]
+				delete(self.pendingSubSet, A)
+				delete(self.encryptedSubSet, A)
+			}
+
+			//
+			//pub := generateH(S1, privECDSA)
+			//AA := common.ToHex(crypto.FromECDSAPub(&pub))
+			//fmt.Println("A1=[hash([a]B)]G+S", AA)
+			//if AA != A {
+			//	log.Error("Verify sub account failed")
+			//	return
+			//}
+			////Confirm stat with the contract
+			//self.VerifiedSubChan <- A
+		}
+
+		if HSverify, ok := self.encryptedHSet[A]; ok {
+			Sbyte, err:= hexutil.Decode(HSverify[1])
+			if err != nil {
+				log.Error("encryptedHSet", "err", err)
+				return
+			}
+
+			subS := crypto.ToECDSAPub(Sbyte)
+
+			genH := generateH(subS, hash)
+			genHstring := common.ToHex(crypto.FromECDSAPub(&genH))
+			if HSverify[0] == genHstring {
+				fmt.Println("HSverify, H=", HSverify[0])
+				self.VerifiedSubChan <- HSverify[0]
+				self.verifiedHSet[A] = self.pendingHSet[A]
+				delete(self.pendingHSet, A)
+				delete(self.encryptedHSet, A)
 			}
 		}
+
+		delete(self.shareSet, A)
 	}
 }
 
@@ -228,14 +299,10 @@ func GeneratePKPairFromSubAddress(w []byte) (*ecdsa.PublicKey, *ecdsa.PublicKey,
 }
 
 // generateH generate one public key of AB account by using algorithm A1=[hash([b]A)]G+S
-func generateH(A *ecdsa.PublicKey, S *ecdsa.PublicKey, b *ecdsa.PrivateKey) ecdsa.PublicKey {
+func generateH(S *ecdsa.PublicKey, hashbA []byte) ecdsa.PublicKey {
 	A1 := new(ecdsa.PublicKey)
 
-	A1.X, A1.Y = crypto.S256().ScalarMult(A.X, A.Y, b.D.Bytes()) //A1=[b]A
-
-	A1Bytes := crypto.Keccak256(crypto.FromECDSAPub(A1)) //hash([b]A)
-
-	A1.X, A1.Y = crypto.S256().ScalarBaseMult(A1Bytes) //[hash([a]B)]G
+	A1.X, A1.Y = crypto.S256().ScalarBaseMult(hashbA) //[hash([a]B)]G
 
 	A1.X, A1.Y = crypto.S256().Add(A1.X, A1.Y, S.X, S.Y) //A1=[hash([a]B)]G+S
 	A1.Curve = crypto.S256()
