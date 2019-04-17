@@ -69,19 +69,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 		}
 		unconfirmedCount, _ := big.NewInt(0).SetString(UnregisterLen[2:], 16)
 
-
-		// get unconfirmed sub address number
-		UnConfirmedSubLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnConfirmedSubAddressLen")
-		if err != nil {
-			log.Error("contract call", "err", err)
-			return
-		}
-		if UnConfirmedSubLen == contract.ContractZero || UnConfirmedSubLen == contract.ContractNull{
-			return
-		}
-		unconfirmedSub, _ := big.NewInt(0).SetString(UnConfirmedSubLen[2:], 16)
-
-
 		for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 			// get unconfirmed address index
 			unregister, err := creditCTR.ContractCallParsed(rpc, coinbase, "unregister", big.NewInt(i))
@@ -156,18 +143,31 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				pool.SaveEncryptedData(pubkey, common.Hash(certHash), decrypedAndVerifyData)
 			}
 		}
+	}
+
+	processSubScan := func() {
+		// get unconfirmed sub address number
+		UnConfirmedSubLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnConfirmedSubAddressLen")
+		if err != nil {
+			log.Error("contract call", "err", err)
+			return
+		}
+
+		if UnConfirmedSubLen == contract.ContractZero || UnConfirmedSubLen == contract.ContractNull{
+			return
+		}
+		unconfirmedSub, _ := big.NewInt(0).SetString(UnConfirmedSubLen[2:], 16)
 
 		for i := int64(0); i < unconfirmedSub.Int64(); i++ {
 			// get unconfirmed address
-			unConfiredSubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "UnConfirmedSubAddress", big.NewInt(i))
+			unConfirmedSubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "UnConfirmedSubAddress", big.NewInt(i))
 			if err != nil {
-				log.Debug("Read unconfirmed  sub address failed", "err", err)
+				log.Debug("Read unconfirmed sub address failed", "err", err)
 				return
 			}
-
-			SubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "SubAddr", unConfiredSubAddr)
+			SubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "SubAddr", unConfirmedSubAddr[0])
 			if err != nil {
-				log.Debug("Read unconfirmed  sub address failed", "err", err)
+				log.Debug("Read unconfirmed sub address failed", "err", err)
 				return
 			}
 			subPubkey, ok := (SubAddr[1]).(string)
@@ -180,6 +180,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				log.Error("It's not ok for", "type", reflect.TypeOf(SubAddr[2]))
 				return
 			}
+
 			sendPublickeyShared(usechain, nodelist, string(subPubkey), max)
 			pool.SaveEncryptedSub(subPubkey, encryptedAS)
 		}
@@ -194,6 +195,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			}
 		default:
 			processScan()
+			processSubScan()
 			time.Sleep(time.Second * 5)
 		}
 	}

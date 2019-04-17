@@ -69,6 +69,11 @@ func NewSharePool() *SharePool{
 		pendingSet: make(map[string]common.Hash),
 		verifiedSet: make(map[string]common.Hash),
 		VerifiedChan:make(chan string, chanSizeLimit),
+
+		encryptedSubSet: make(map[string]string),
+		pendingSubSet: make(map[string]string),
+		verifiedSubSet: make(map[string]string),
+		VerifiedSubChan:make(chan string, chanSizeLimit),
 	}
 }
 
