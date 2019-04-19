@@ -141,6 +141,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		bA, err := sssa.CombineECDSAPubkey(shares) //bA
 		if err != nil {
 			log.Error("Combine error: ", "error", err)
+			delete(self.shareSet, A)
 			continue
 		}
 
