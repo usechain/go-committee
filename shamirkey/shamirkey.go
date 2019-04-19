@@ -30,7 +30,7 @@ import (
 	"github.com/usechain/go-committee/shamirkey/verify"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/contract/creditNew"
-	"github.com/usechain/subchain/common/hexutil"
+	"github.com/usechain/go-usechain/common/hexutil"
 )
 
 //Read committee config from contract
