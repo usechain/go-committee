@@ -166,6 +166,9 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 			if err != nil {
 				log.Error("decryption: ", "err", err.Error())
+				delete(self.pendingSet, A)
+				delete(self.encryptedSet, A)
+				delete(self.shareSet, A)
 				continue
 			}
 
