@@ -209,7 +209,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 			}
 
 		case subdata := <- pool.SubChan:
-			fmt.Println("processSub")
 			processSub(subdata)
 
 		default:

@@ -19,7 +19,6 @@ package core
 import (
 	"crypto/rand"
 	"sync"
-	"time"
 	"encoding/json"
 	"strings"
 	"github.com/usechain/go-committee/shamirkey/sssa"
@@ -130,7 +129,6 @@ func (self *SharePool) SaveSubData(A string, HS []string) {
 	fmt.Println("encryptedHSet======", self.encryptedHSet)
 }
 
-
 func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
@@ -142,7 +140,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 		bA, err := sssa.CombineECDSAPubkey(shares) //bA
 		if err != nil {
-			time.Sleep(time.Second * 10)
 			log.Error("Combine error: ", "error", err)
 			continue
 		}
@@ -256,18 +253,17 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			}
 
 			subS := crypto.ToECDSAPub(Sbyte)
-
 			genH := generateH(subS, hash)
 			genHstring := common.ToHex(crypto.FromECDSAPub(&genH))
+			log.Info("Generate sub account pubkey", "subPub", genHstring)
 			if HSverify[0] == genHstring {
-				fmt.Println("HSverify, H=", HSverify[0])
+				log.Info("Sub account pubkey", "subPub", HSverify[0])
 				self.VerifiedSubChan <- HSverify[0]
-				self.verifiedHSet[A] = self.pendingHSet[A]
-				delete(self.pendingHSet, A)
-				delete(self.encryptedHSet, A)
 			}
+			self.verifiedHSet[A] = self.pendingHSet[A]
+			delete(self.pendingHSet, A)
+			delete(self.encryptedHSet, A)
 		}
-
 		delete(self.shareSet, A)
 	}
 }
