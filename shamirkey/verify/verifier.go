@@ -46,3 +46,28 @@ func IsAccountVerifier(A string, max int, cid int) bool {
 	}
 	return false
 }
+
+// Return the verfier id set based on the A address
+func AccountSubVerifier(A string, max int) (idset []int) {
+	hash := crypto.Keccak256Hash([]byte(A))
+	id := big.NewInt(0).Mod(hash.Big(), big.NewInt(int64(max)))
+
+	for i := 0; i < core.VerifierSubRequires; i++ {
+		index := (int(id.Int64()) + i)%max
+		idset = append(idset, index)
+	}
+	log.Info("AccountVerifier committee ID set", "idset", idset)
+	return
+}
+
+// Check the determined ID whether need to verify the address A
+func IsSubAccountVerifier(A string, max int, cid int) bool {
+	idset := AccountSubVerifier(A, max)
+	for _, id := range idset {
+		if id == cid {
+			return true
+		}
+	}
+	return false
+}
+

@@ -33,6 +33,7 @@ import (
 	"github.com/btcsuite/btcd/btcec"
 	"crypto/ecdsa"
 	"encoding/hex"
+	"time"
 )
 
 const chanSizeLimit = 10
@@ -61,7 +62,7 @@ type SharePool struct {
 
 type SubData struct {
 	H string
-	A string
+	Amain string
 	S string
 }
 
@@ -121,11 +122,11 @@ func (self *SharePool) SaveEncryptedSub(A string, data string) {
 	self.pendingSubSet[A] = data
 }
 
-func (self *SharePool) SaveSubData(A string, HS []string) {
+func (self *SharePool) SaveSubData(S string, H string) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
-	self.encryptedHSet[A] = HS
-	self.pendingHSet[A] = HS
+	self.encryptedHSet[S] =  append(self.encryptedHSet[S], H)
+	self.encryptedHSet[S] = append(self.encryptedHSet[S], S)
 	fmt.Println("encryptedHSet======", self.encryptedHSet)
 }
 
@@ -134,9 +135,11 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	defer self.mu.Unlock()
 	for A, shares := range self.shareSet {
 		//check whether got enough shares
-		if len(shares) < requires {
+		if len(shares) < 5 {
+			time.Sleep(time.Second)
 			continue
 		}
+		log.Info("Received shares", "len(shares)", len(shares))
 
 		bA, err := sssa.CombineECDSAPubkey(shares) //bA
 		if err != nil {
@@ -212,32 +215,31 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 				continue
 			}
 
-			log.Info("Decrypt received shared message", "msg", string(pt))
+			log.Info("Decrypt received subaccount shared message", "msg", string(pt))
 			ASbyte, _ := hex.DecodeString(string(pt))
 			A1, S1, err := GeneratePKPairFromSubAddress(ASbyte)
-			if err !=nil {
+			if err != nil {
 				log.Error("GeneratePKPairFromSubAddress", "err", err)
 				return
 			}
 
-			A11:=common.ToHex(crypto.FromECDSAPub(A1))
-			S11:=common.ToHex(crypto.FromECDSAPub(S1))
+			A11 := common.ToHex(crypto.FromECDSAPub(A1))
+			S11 := common.ToHex(crypto.FromECDSAPub(S1))
 			fmt.Println("A1:::", A11)
 			fmt.Println("S1---===", S11)
 
-			if A1 != nil && S1 !=nil {
+			if A1 != nil && S1 != nil {
 				subdata := &SubData{
 					H: A,
-					A: A11,
+					Amain: A11,
 					S: S11,
 				}
 				self.SubChan <- subdata
 				self.verifiedSubSet[A] = self.pendingSubSet[A]
-				delete(self.pendingSubSet, A)
-				delete(self.encryptedSubSet, A)
 			}
+			delete(self.pendingSubSet, A)
+			delete(self.encryptedSubSet, A)
 
-			//
 			//pub := generateH(S1, privECDSA)
 			//AA := common.ToHex(crypto.FromECDSAPub(&pub))
 			//fmt.Println("A1=[hash([a]B)]G+S", AA)
@@ -250,12 +252,12 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		}
 
 		if HSverify, ok := self.encryptedHSet[A]; ok {
-			Sbyte, err:= hexutil.Decode(HSverify[1])
+			log.Info("Received sub account shared message", "msg",  self.encryptedHSet)
+			Sbyte, err := hexutil.Decode(HSverify[1])
 			if err != nil {
 				log.Error("encryptedHSet", "err", err)
 				return
 			}
-
 			subS := crypto.ToECDSAPub(Sbyte)
 			genH := generateH(subS, hash)
 			genHstring := common.ToHex(crypto.FromECDSAPub(&genH))

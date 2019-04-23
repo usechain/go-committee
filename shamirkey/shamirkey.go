@@ -175,6 +175,12 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 			if verify.IsAccountVerifier(A, core.CommitteeMax, p.CommitteeID) {
 				pool.SaveAccountSharedCache(A, bsA, m.Sender)
 			}
+		case msg.VerifyShareSubMsg:
+			A, bsA := msg.UnpackVerifyShare(m.Data)
+			log.Debug("Received a new shared for account verifying", "A", A)
+			if verify.IsSubAccountVerifier(A, core.CommitteeMax, p.CommitteeID) {
+				pool.SaveAccountSharedCache(A, bsA, m.Sender)
+			}
 		}
 	}
 }

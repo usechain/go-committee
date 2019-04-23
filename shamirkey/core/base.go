@@ -18,8 +18,9 @@ package core
 
 var (
 	CommitteeMax = 5				//Just default params, will update from contract when process running
-	CommitteeRequires = 3
+	CommitteeRequires = 5
 	CommitteeNodeList []string      // All committer
-	VerifierRequires = 3
+	VerifierRequires = 2
+	VerifierSubRequires = 5
 )
 
