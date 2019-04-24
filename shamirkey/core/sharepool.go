@@ -134,8 +134,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	for A, shares := range self.shareSet {
-		fmt.Println(self.shareSet)
-
 		//check whether got enough shares
 		if len(shares) < 5 {
 			time.Sleep(time.Second)
@@ -187,7 +185,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			idHash := hexutil.Encode(crypto.Keccak256Hash([]byte(id)).Bytes())
 			if idHash != decrypedAndVerifyData[0] {
 				log.Error("Verify certHash and verifyHash failed")
-				return
+				continue
 			}
 
 			log.Info("Decrypt received shared message", "msg", string(pt))
@@ -225,7 +223,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			A1, S1, err := GeneratePKPairFromSubAddress(ASbyte)
 			if err != nil {
 				log.Error("GeneratePKPairFromSubAddress", "err", err)
-				return
+				continue
 			}
 
 			A11 := common.ToHex(crypto.FromECDSAPub(A1))
@@ -261,7 +259,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			Sbyte, err := hexutil.Decode(HSverify[1])
 			if err != nil {
 				log.Error("encryptedHSet", "err", err)
-				return
+				continue
 			}
 			subS := crypto.ToECDSAPub(Sbyte)
 			genH := generateH(subS, hash)
@@ -276,6 +274,9 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			delete(self.encryptedHSet, A)
 		}
 		delete(self.shareSet, A)
+	}
+	for Ax , _ := range self.shareSet{
+		fmt.Println("lets see ----------======", Ax)
 	}
 }
 
