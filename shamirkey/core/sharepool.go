@@ -134,6 +134,8 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	for A, shares := range self.shareSet {
+		fmt.Println(self.shareSet)
+
 		//check whether got enough shares
 		if len(shares) < 5 {
 			time.Sleep(time.Second)
@@ -208,6 +210,9 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			if err != nil {
 				log.Error("decryption sub encAS: ", "err", err)
 				// TODO:   SubFailedDecrypted 添加到合约
+				for Ax , _ := range self.shareSet{
+					fmt.Println("lets see +++++++++++++++++++", Ax)
+				}
 				self.SubFailedDecrypted <- A
 				delete(self.pendingSubSet, A)
 				delete(self.encryptedSubSet, A)

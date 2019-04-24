@@ -296,7 +296,7 @@ func sendSubPublickeyShared(usechain *config.Usechain, nodelist []string, A stri
 
 	///TODO: ID can be self
 	for _, id := range verify.AccountSubVerifier(A, max) {
-		log.Info("Send message to Verifier", "id", id, "node", nodelist[id])
+		log.Info("Send sub account message to Verifier", "id", id, "node", nodelist[id])
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }
@@ -317,7 +317,7 @@ func sendSubShared(usechain *config.Usechain, nodelist []string, A string,S stri
 
 	///TODO: ID can be self
 	for _, id := range verify.AccountVerifier(S, max) {
-		log.Info("Send message to Verifier", "id", id, "node", nodelist[id])
+		log.Info("Send main accunt of the sub account to Verifier", "id", id, "node", nodelist[id])
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }
