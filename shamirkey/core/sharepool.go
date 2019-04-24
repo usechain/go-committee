@@ -153,8 +153,8 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		log.Debug("Generate Hash bA", "hash(bA)", hexutil.Encode(hash[:]))
 		privECDSA, _ := crypto.ToECDSA(hash)
 
-		pub := common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey))
-		log.Debug("Generate Publick key", "pub", pub)
+		//pub := common.ToHex(crypto.FromECDSAPub(&privECDSA.PublicKey))
+		//log.Debug("Generate Publick key", "pub", pub)
 
 		priv := ecies.ImportECDSA(privECDSA)
 
@@ -206,7 +206,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 			pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 			if err != nil {
-				log.Error("decryption: ", "err", err.Error())
+				log.Error("decryption sub encAS: ", "err", err)
 				// TODO:   SubFailedDecrypted 添加到合约
 				self.SubFailedDecrypted <- A
 				delete(self.pendingSubSet, A)
@@ -263,7 +263,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			genHstring := common.ToHex(crypto.FromECDSAPub(&genH))
 			log.Info("Generate sub account pubkey", "subPub", genHstring)
 			if HSverify[0] == genHstring {
-				log.Info("Sub account pubkey", "subPub", HSverify[0])
+				log.Info("Verified sub account: valid! ", "subPub", HSverify[0])
 				self.VerifiedSubChan <- HSverify[0]
 			}
 			self.verifiedHSet[A] = self.pendingHSet[A]
