@@ -209,11 +209,12 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 				log.Error("decryption sub encAS: ", "err", err)
 				// TODO:   SubFailedDecrypted 添加到合约
 				for Ax , _ := range self.shareSet{
-					fmt.Println("lets see +++++++++++++++++++", Ax)
+					fmt.Println("lets see shareSet+++++++++++++++++++", Ax)
+				}
+				for Ax , bx := range self.encryptedSubSet{
+					fmt.Println("lets see encryptedSubSet+++++++++++++++++++", Ax,bx)
 				}
 				self.SubFailedDecrypted <- A
-				delete(self.pendingSubSet, A)
-				delete(self.encryptedSubSet, A)
 				delete(self.shareSet, A)
 				continue
 			}
