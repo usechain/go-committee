@@ -94,7 +94,7 @@ func NewSharePool() *SharePool{
 		encryptedHSet : make(map[string][]string),
 		pendingHSet : make(map[string][]string),
 		verifiedHSet: make(map[string][]string),
-
+		SubFailedDecrypted : make(chan string, chanSizeLimit),
 	}
 }
 
@@ -214,7 +214,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 				for Ax , bx := range self.encryptedSubSet{
 					fmt.Println("lets see encryptedSubSet+++++++++++++++++++", Ax,bx)
 				}
-				self.SubFailedDecrypted <- A
+				//self.SubFailedDecrypted <- A
 				delete(self.shareSet, A)
 				continue
 			}
@@ -275,9 +275,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			delete(self.encryptedHSet, A)
 		}
 		delete(self.shareSet, A)
-	}
-	for Ax , _ := range self.shareSet{
-		fmt.Println("lets see ----------======", Ax)
 	}
 }
 
