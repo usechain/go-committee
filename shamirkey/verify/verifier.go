@@ -37,8 +37,8 @@ func AccountVerifier(A string, max int) (idset []int) {
 }
 
 // Check the determined ID whether need to verify the address A
-func IsAccountVerifier(A string, max int, cid int) bool {
-	idset := AccountVerifier(A, max)
+func IsAccountVerifier(addrID string, max int, cid int) bool {
+	idset := AccountVerifier(addrID, max)
 	for _, id := range idset {
 		if id == cid {
 			return true

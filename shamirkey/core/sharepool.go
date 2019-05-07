@@ -108,18 +108,18 @@ func (self *SharePool) SaveAccountSharedCache(A string, bsA string, id int) {
 	self.shareSet[A] = append(self.shareSet[A], bsA)
 }
 
-func (self *SharePool) SaveEncryptedData(A string, h common.Hash, data string) {
+func (self *SharePool) SaveEncryptedData(addrID string, h common.Hash, data string) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
-	self.encryptedSet[A] = data
-	self.pendingSet[A] = h
+	self.encryptedSet[addrID] = data
+	self.pendingSet[addrID] = h
 }
 
-func (self *SharePool) SaveEncryptedSub(A string, data string) {
+func (self *SharePool) SaveEncryptedSub(addrSubIDstring string, data string) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
-	self.encryptedSubSet[A] = data
-	self.pendingSubSet[A] = data
+	self.encryptedSubSet[addrSubIDstring] = data
+	self.pendingSubSet[addrSubIDstring] = data
 }
 
 func (self *SharePool) SaveSubData(S string, H string) {

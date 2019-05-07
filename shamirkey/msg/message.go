@@ -121,14 +121,14 @@ func PackCommitteeNewLogin(id int) []byte{
 }
 
 //Pack the Verify Shares Message
-func PackVerifyShare(A string, bsA *ecdsa.PublicKey, id int) []byte{
+func PackVerifyShare(addrIDstring string, bsA *ecdsa.PublicKey, id int) []byte{
 	var s string
 	s += utils.ToBase64(big.NewInt(int64(id + 1)))
 	s += utils.ToBase64(bsA.X)
 	s += utils.ToBase64(bsA.Y)
 
 	d := make([][]byte, 2)
-	d[0] = []byte(A)
+	d[0] = []byte(addrIDstring)
 	d[1] = []byte(s)
 
 	msg := 	Msg {

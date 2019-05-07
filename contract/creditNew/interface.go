@@ -23,10 +23,11 @@ import (
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-usechain/common/hexutil"
 	"github.com/usechain/go-usechain/node"
+	"strconv"
 )
 
 const creditAddr = "0x7220f7eAbb80347e1c7130366D73d0Bd6f16f793"
-const creditABI = "[{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"SubAddr\",\"outputs\":[{\"name\":\"confirmed\",\"type\":\"bool\"},{\"name\":\"pubKey\",\"type\":\"string\"},{\"name\":\"encryptedAS\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"UnConfirmedSubAddress\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_pubkey\",\"type\":\"string\"},{\"name\":\"_encryptedAS\",\"type\":\"string\"}],\"name\":\"subRegister\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnConfirmedSubAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"CommitteeAddr\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"getHashData\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"},{\"name\":\"\",\"type\":\"bytes\"},{\"name\":\"\",\"type\":\"bool\"},{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnregisterHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getUserInfo\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"},{\"name\":\"\",\"type\":\"string\"},{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bytes32[]\"},{\"name\":\"\",\"type\":\"bool[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"isMainAccount\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"hashKey\",\"type\":\"bytes32\"},{\"name\":\"_identity\",\"type\":\"bytes\"},{\"name\":\"_issuer\",\"type\":\"bytes\"}],\"name\":\"addNewIdentity\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"isSigner\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"verifySub\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"unregister\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"verifyBase\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"checkSubAddr\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"test\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"},{\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"verifyHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBaseData\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"unConfirmedSubAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnregisterLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"renounceSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"addSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_publicKey\",\"type\":\"string\"},{\"name\":\"_hashKey\",\"type\":\"bytes32\"},{\"name\":\"_identity\",\"type\":\"bytes\"},{\"name\":\"_issuer\",\"type\":\"bytes\"}],\"name\":\"register\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewUserRegister\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewIdentity\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerRemoved\",\"type\":\"event\"}]"
+const creditABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"_pubkey\",\"type\":\"string\"},{\"name\":\"_encryptedAS\",\"type\":\"string\"}],\"name\":\"subRegister\",\"outputs\":[{\"name\":\"_registerID\",\"type\":\"uint256\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnConfirmedSubAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"CommitteeAddr\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"confirmedMainAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"RegisterIDtoAddr\",\"outputs\":[{\"name\":\"verified\",\"type\":\"bool\"},{\"name\":\"toAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"unConfirmedMainAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"isSigner\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_registerID\",\"type\":\"uint256\"},{\"name\":\"_status\",\"type\":\"uint8\"}],\"name\":\"verifySub\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"RegisterID\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_registerID\",\"type\":\"uint256\"},{\"name\":\"_hash\",\"type\":\"bytes32\"},{\"name\":\"_status\",\"type\":\"uint8\"}],\"name\":\"verifyHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"confirmedSubAddress\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"test\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"UnConfirmedSubAddrID\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"unConfirmedSubAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"confirmedSubAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnConfirmedMainAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"confirmedMainAddress\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"renounceSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"addSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"SubAccount\",\"outputs\":[{\"name\":\"addr\",\"type\":\"address\"},{\"name\":\"status\",\"type\":\"uint8\"},{\"name\":\"publicKey\",\"type\":\"string\"},{\"name\":\"encryptedAS\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"UnConfirmedMainAddrID\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"MainAccount\",\"outputs\":[{\"name\":\"addr\",\"type\":\"address\"},{\"name\":\"hashKey\",\"type\":\"bytes32\"},{\"name\":\"status\",\"type\":\"uint8\"},{\"name\":\"identity\",\"type\":\"bytes\"},{\"name\":\"issuer\",\"type\":\"bytes\"},{\"name\":\"publicKey\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_publicKey\",\"type\":\"string\"},{\"name\":\"_hashKey\",\"type\":\"bytes32\"},{\"name\":\"_identity\",\"type\":\"bytes\"},{\"name\":\"_issuer\",\"type\":\"bytes\"}],\"name\":\"register\",\"outputs\":[{\"name\":\"_registerID\",\"type\":\"uint256\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"getAccountStatus\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewUserRegister\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewIdentity\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerRemoved\",\"type\":\"event\"}]"
 
 //The struct of the identity
 type Identity struct {
@@ -53,52 +54,57 @@ type Issuer struct {
 func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, nodelist []string, max int) {
 	rpc := usechain.NodeRPC
 	coinbase := usechain.UserProfile.Address
-	certHashAddtoSet := NewSet()
+	registerIDSet := NewSet()
 	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
 	ethQuitCh := make(chan struct{}, 1)
 	subSet := NewSet()
 	processScan := func() {
 		// get unconfirmed main address number
-		UnregisterLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnregisterLen")
+		getUnConfirmedMainAddressLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnConfirmedMainAddressLen")
 		if err != nil {
 			log.Error("contract call", "err", err)
 			return
 		}
-		if UnregisterLen == contract.ContractZero || UnregisterLen == contract.ContractNull{
+		if getUnConfirmedMainAddressLen == contract.ContractZero || getUnConfirmedMainAddressLen == contract.ContractNull{
 			return
 		}
-		unconfirmedCount, _ := big.NewInt(0).SetString(UnregisterLen[2:], 16)
+		unconfirmedCount, _ := big.NewInt(0).SetString(getUnConfirmedMainAddressLen[2:], 16)
 
 		for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 			// get unconfirmed address index
-			unregister, err := creditCTR.ContractCallParsed(rpc, coinbase, "unregister", big.NewInt(i))
-			if err != nil && len(unregister) == 0 {
+			UnConfirmedMainAddrID, err := creditCTR.ContractCallParsed(rpc, coinbase, "UnConfirmedMainAddrID", big.NewInt(i))
+			if err != nil && len(UnConfirmedMainAddrID) == 0 {
 				log.Debug("Read unconfirmed address failed", "err", err)
 				return
 			}
-			certHash, ok := (unregister[0]).([32]uint8)
-			if !ok {
-				log.Error("It's not ok for", "type", reflect.TypeOf(unregister[0]))
+
+			UnConfirmedMainAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "RegisterIDtoAddr", UnConfirmedMainAddrID[0])
+			if err != nil && len(UnConfirmedMainAddrID) == 0 {
+				log.Debug("Read unconfirmed address failed", "err", err)
 				return
 			}
 
-			certHashToString := hexutil.Encode(certHash[:])
-			if certHashAddtoSet.Has(certHashToString) {
+			mainAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "mainAccount", UnConfirmedMainAddr[0])
+			if err != nil {
+				log.Debug("Read unconfirmed sub address failed", "err", err)
+				return
+			}
+
+			addrID := UnConfirmedMainAddrID[0].(uint)
+			addrIDstring := strconv.Itoa(int(addrID))
+			if registerIDSet.Has(addrIDstring) {
 				continue
 			} else {
-				certHashAddtoSet.Add(certHashToString)
+				registerIDSet.Add(addrIDstring)
 				// get encrypted string based on address as index
-				log.Info("Receive certHash", "certHash", certHashToString)
-				getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase, "getHashData", certHash)
-				if err != nil {
-					log.Error("ContractCallParsed failed", "err", err)
-					return
-				}
+				log.Info("Receive UnConfirmedMainAddr", "UnConfirmedMainAddr", mainAccount[0].(common.Address))
+
+				hashKey := mainAccount[1].([32]uint8)
 
 				// read identity info
-				identity, ok := (getHashData[0]).([]byte)
+				identity, ok := (mainAccount[3]).([]byte)
 				if !ok {
-					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[0]))
+					log.Error("It's not ok for", "type", reflect.TypeOf(mainAccount[3]))
 					return
 				}
 				log.Debug("Get identity string", "string", string(identity))
@@ -111,9 +117,9 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				}
 
 				// read issuer info
-				issuer, ok := (getHashData[1]).([]byte)
+				issuer, ok := (mainAccount[4]).([]byte)
 				if !ok {
-					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[1]))
+					log.Error("It's not ok for", "type", reflect.TypeOf(mainAccount[4]))
 					return
 				}
 				log.Debug("get issuer string", "string", string(issuer))
@@ -124,23 +130,24 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 					log.Debug( "Unmarshal failed: " , "err", err )
 				}
 
-				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), certHashToString, id.Fpr)
+				hashKeyString := hexutil.Encode(hashKey[:])
+				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
 				if err != nil {
 					log.Error("CheckUserRegisterCert failed", err)
 					return
 				}
 
 				// read requestor's public key
-				pubkey, ok := (getHashData[3]).(string)
+				pubkey, ok := (mainAccount[5]).(string)
 				if !ok {
-					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[3]))
+					log.Error("It's not ok for", "type", reflect.TypeOf(mainAccount[5]))
 					return
 				}
 				log.Debug("Get public key", "key", string(pubkey))
 
-				decrypedAndVerifyData := strings.Join([]string{certHashToString, id.Data},"+")
-				sendPublickeyShared(usechain, nodelist, string(pubkey), max)
-				pool.SaveEncryptedData(pubkey, common.Hash(certHash), decrypedAndVerifyData)
+				decrypedAndVerifyData := strings.Join([]string{hashKeyString, id.Data},"+")
+				sendPublickeyShared(usechain, nodelist, string(pubkey), max, addrIDstring)
+				pool.SaveEncryptedData(addrIDstring, common.Hash(hashKey), decrypedAndVerifyData)
 			}
 		}
 	}
@@ -160,33 +167,35 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 		for i := int64(0); i < unconfirmedSub.Int64(); i++ {
 			// get unconfirmed address
-			unConfirmedSubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "UnConfirmedSubAddress", big.NewInt(i))
+			UnConfirmedSubAddrID, err := creditCTR.ContractCallParsed(rpc, coinbase, "UnConfirmedSubAddrID", big.NewInt(i))
 			if err != nil {
 				log.Debug("Read unconfirmed sub address failed", "err", err)
 				return
 			}
-			SubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "SubAddr", unConfirmedSubAddr[0])
+			SubAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "subAccount", UnConfirmedSubAddrID[0])
 			if err != nil {
 				log.Debug("Read unconfirmed sub address failed", "err", err)
 				return
 			}
-			subPubkey, ok := (SubAddr[1]).(string)
+			subPubkey, ok := (SubAccount[2]).(string)
 			if !ok {
-				log.Error("It's not ok for", "type", reflect.TypeOf(SubAddr[1]))
+				log.Error("It's not ok for", "type", reflect.TypeOf(SubAccount[2]))
 				return
 			}
-			encryptedAS, ok := (SubAddr[2]).(string)
+			encryptedAS, ok := (SubAccount[3]).(string)
 			if !ok {
-				log.Error("It's not ok for", "type", reflect.TypeOf(SubAddr[2]))
+				log.Error("It's not ok for", "type", reflect.TypeOf(SubAccount[3]))
 				return
 			}
 
-			if subSet.Has(string(subPubkey)) {
+			addrSubID := UnConfirmedSubAddrID[0].(uint)
+			addrSubIDstring := strconv.Itoa(int(addrSubID))
+			if subSet.Has(string(addrSubIDstring)) {
 				continue
 			} else {
-				subSet.Add(string(subPubkey))
-				sendSubPublickeyShared(usechain, nodelist, string(subPubkey), max)
-				pool.SaveEncryptedSub(subPubkey, encryptedAS)
+				subSet.Add(string(addrSubIDstring))
+				sendSubPublickeyShared(usechain, nodelist, string(subPubkey), max, addrSubIDstring)
+				pool.SaveEncryptedSub(addrSubIDstring, encryptedAS)
 			}
 		}
 	}
@@ -259,7 +268,7 @@ func ConfirmSubAccount(usechain *config.Usechain, addr common.Address) error {
 	return nil
 }
 
-func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int) {
+func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int, addrID string) {
 	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
 	if priv == nil {
 		log.Error("No valid private share")
@@ -271,16 +280,16 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 	pubkey.X, pubkey.Y = crypto.S256().ScalarMult(publicA.X, publicA.Y, priv.D.Bytes())   //bsA=[bs]B
 	pubkey.Curve = crypto.S256()
 
-	m := msg.PackVerifyShare(A, pubkey, usechain.UserProfile.CommitteeID)
+	m := msg.PackVerifyShare(addrID, pubkey, usechain.UserProfile.CommitteeID)
 
 	///TODO: ID can be self
-	for _, id := range verify.AccountVerifier(A, max) {
+	for _, id := range verify.AccountVerifier(addrID, max) {
 		log.Info("Send message to Verifier", "id", id, "node", nodelist[id])
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }
 
-func sendSubPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int) {
+func sendSubPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int, addrSubIDstring string) {
 	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
 	if priv == nil {
 		log.Error("No valid private share")
@@ -292,10 +301,10 @@ func sendSubPublickeyShared(usechain *config.Usechain, nodelist []string, A stri
 	pubkey.X, pubkey.Y = crypto.S256().ScalarMult(publicA.X, publicA.Y, priv.D.Bytes())   //bsA=[bs]B
 	pubkey.Curve = crypto.S256()
 
-	m := msg.PackVerifySubShare(A, pubkey, usechain.UserProfile.CommitteeID)
+	m := msg.PackVerifySubShare(addrSubIDstring, pubkey, usechain.UserProfile.CommitteeID)
 
 	///TODO: ID can be self
-	for _, id := range verify.AccountSubVerifier(A, max) {
+	for _, id := range verify.AccountSubVerifier(addrSubIDstring, max) {
 		log.Info("Send sub account message to Verifier", "id", id, "node", nodelist[id])
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
