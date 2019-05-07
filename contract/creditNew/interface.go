@@ -26,7 +26,7 @@ import (
 	"strconv"
 )
 
-const creditAddr = "0x7220f7eAbb80347e1c7130366D73d0Bd6f16f793"
+const creditAddr = "0x16480bBf54C2de40AaF739501606c536A005292E"
 const creditABI = "[{\"constant\":false,\"inputs\":[{\"name\":\"_pubkey\",\"type\":\"string\"},{\"name\":\"_encryptedAS\",\"type\":\"string\"}],\"name\":\"subRegister\",\"outputs\":[{\"name\":\"_registerID\",\"type\":\"uint256\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnConfirmedSubAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"CommitteeAddr\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"confirmedMainAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"RegisterIDtoAddr\",\"outputs\":[{\"name\":\"verified\",\"type\":\"bool\"},{\"name\":\"toAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"unConfirmedMainAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"isSigner\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_registerID\",\"type\":\"uint256\"},{\"name\":\"_status\",\"type\":\"uint8\"}],\"name\":\"verifySub\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"RegisterID\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_registerID\",\"type\":\"uint256\"},{\"name\":\"_hash\",\"type\":\"bytes32\"},{\"name\":\"_status\",\"type\":\"uint8\"}],\"name\":\"verifyHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"confirmedSubAddress\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"test\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"UnConfirmedSubAddrID\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"unConfirmedSubAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"confirmedSubAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnConfirmedMainAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"confirmedMainAddress\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"renounceSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"addSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"SubAccount\",\"outputs\":[{\"name\":\"addr\",\"type\":\"address\"},{\"name\":\"status\",\"type\":\"uint8\"},{\"name\":\"publicKey\",\"type\":\"string\"},{\"name\":\"encryptedAS\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"UnConfirmedMainAddrID\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"MainAccount\",\"outputs\":[{\"name\":\"addr\",\"type\":\"address\"},{\"name\":\"hashKey\",\"type\":\"bytes32\"},{\"name\":\"status\",\"type\":\"uint8\"},{\"name\":\"identity\",\"type\":\"bytes\"},{\"name\":\"issuer\",\"type\":\"bytes\"},{\"name\":\"publicKey\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_publicKey\",\"type\":\"string\"},{\"name\":\"_hashKey\",\"type\":\"bytes32\"},{\"name\":\"_identity\",\"type\":\"bytes\"},{\"name\":\"_issuer\",\"type\":\"bytes\"}],\"name\":\"register\",\"outputs\":[{\"name\":\"_registerID\",\"type\":\"uint256\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"getAccountStatus\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewUserRegister\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewIdentity\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerRemoved\",\"type\":\"event\"}]"
 
 //The struct of the identity
@@ -72,26 +72,26 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 		for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 			// get unconfirmed address index
-			UnConfirmedMainAddrID, err := creditCTR.ContractCallParsed(rpc, coinbase, "UnConfirmedMainAddrID", big.NewInt(i))
+			UnConfirmedMainAddrID, err := creditCTR.ContractCall(rpc, coinbase, "UnConfirmedMainAddrID", big.NewInt(i))
 			if err != nil && len(UnConfirmedMainAddrID) == 0 {
 				log.Debug("Read unconfirmed address failed", "err", err)
 				return
 			}
 
-			UnConfirmedMainAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "RegisterIDtoAddr", UnConfirmedMainAddrID[0])
+			mainID , _ := big.NewInt(0).SetString(UnConfirmedMainAddrID[2:], 16)
+			UnConfirmedMainAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "RegisterIDtoAddr", big.NewInt(mainID.Int64()))
 			if err != nil && len(UnConfirmedMainAddrID) == 0 {
-				log.Debug("Read unconfirmed address failed", "err", err)
+				log.Debug("Read UnConfirmedMainAddrID failed", "err", err)
 				return
 			}
 
-			mainAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "mainAccount", UnConfirmedMainAddr[0])
+			mainAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "MainAccount", UnConfirmedMainAddr[1])
 			if err != nil {
-				log.Debug("Read unconfirmed sub address failed", "err", err)
+				log.Debug("Read unconfirmed mainAccount failed", "err", err)
 				return
 			}
 
-			addrID := UnConfirmedMainAddrID[0].(uint)
-			addrIDstring := strconv.Itoa(int(addrID))
+			addrIDstring := strconv.Itoa(int(mainID.Int64()))
 			if registerIDSet.Has(addrIDstring) {
 				continue
 			} else {
@@ -167,16 +167,24 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 		for i := int64(0); i < unconfirmedSub.Int64(); i++ {
 			// get unconfirmed address
-			UnConfirmedSubAddrID, err := creditCTR.ContractCallParsed(rpc, coinbase, "UnConfirmedSubAddrID", big.NewInt(i))
+			UnConfirmedSubAddrID, err := creditCTR.ContractCall(rpc, coinbase, "UnConfirmedSubAddrID", big.NewInt(i))
+			if err != nil {
+				log.Debug("Read UnConfirmedSubAddrID failed", "err", err)
+				return
+			}
+			subID, _ := big.NewInt(0).SetString(UnConfirmedSubAddrID[2:], 16)
+			SubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "RegisterIDtoAddr", big.NewInt(subID.Int64()))
 			if err != nil {
 				log.Debug("Read unconfirmed sub address failed", "err", err)
 				return
 			}
-			SubAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "subAccount", UnConfirmedSubAddrID[0])
+
+			SubAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "SubAccount", SubAddr[1])
 			if err != nil {
-				log.Debug("Read unconfirmed sub address failed", "err", err)
+				log.Debug("Read unconfirmed SubAccount failed", "err", err)
 				return
 			}
+
 			subPubkey, ok := (SubAccount[2]).(string)
 			if !ok {
 				log.Error("It's not ok for", "type", reflect.TypeOf(SubAccount[2]))
@@ -188,14 +196,14 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				return
 			}
 
-			addrSubID := UnConfirmedSubAddrID[0].(uint)
-			addrSubIDstring := strconv.Itoa(int(addrSubID))
+			addrSubIDstring := strconv.Itoa(int(subID.Int64()))
 			if subSet.Has(string(addrSubIDstring)) {
 				continue
 			} else {
 				subSet.Add(string(addrSubIDstring))
 				sendSubPublickeyShared(usechain, nodelist, string(subPubkey), max, addrSubIDstring)
-				pool.SaveEncryptedSub(addrSubIDstring, encryptedAS)
+				subVerifyData := strings.Join([]string{string(subPubkey),encryptedAS}, "+")
+				pool.SaveEncryptedSub(addrSubIDstring, subVerifyData)
 			}
 		}
 	}
@@ -207,7 +215,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 		//}
 		sendSubShared(usechain, nodelist, subdata.Amain, subdata.S, max)
 		// many A with one HS
-		pool.SaveSubData(subdata.S, subdata.H)
+		pool.SaveSubData(subdata.S, subdata.H, subdata.SubID)
 	}
 
 	loop := true
@@ -230,13 +238,13 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 	}
 }
 
-func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, hash common.Hash) error {
+func ConfirmCreditSystemAccount(usechain *config.Usechain, mainData core.VerifiedMain) error {
 	rpc := usechain.NodeRPC
 	coinbase := usechain.UserProfile.Address
 	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
 
 	// verify hash
-	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
+	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", mainData.RegisterID, mainData.Hashkey, mainData.Status)
 	log.Info("VerifyHash transaction", "hash", res)
 	if err != nil {
 		log.Error("contract call", "err", err)
@@ -249,18 +257,18 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 	return nil
 }
 
-func ConfirmSubAccount(usechain *config.Usechain, addr common.Address) error {
+func ConfirmSubAccount(usechain *config.Usechain, sub core.VerifiedSub) error {
 	rpc := usechain.NodeRPC
 	coinbase := usechain.UserProfile.Address
 	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
 
 	// verify hash
-	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifySub", addr)
-	log.Info("VerifySub transaction", "hash", res)
+	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifySub", sub.RegisterID, sub.Status)
 	if err != nil {
-		log.Error("contract call", "err", err)
+		log.Error("VerifySub transaction", "err", err)
 		return err
 	}
+	log.Info("VerifySub transaction", "hash", res)
 
 	if res == contract.ContractZero || res == contract.ContractNull {
 		return nil

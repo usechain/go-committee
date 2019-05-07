@@ -34,21 +34,34 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"time"
+	"strconv"
+	"math/big"
 )
 
 const chanSizeLimit = 10
+
+type VerifiedMain struct {
+	RegisterID *big.Int
+	Hashkey common.Hash
+	Status  *big.Int
+}
+
+type VerifiedSub struct {
+	RegisterID *big.Int
+	Status  *big.Int
+}
 
 type SharePool struct {
 	shareSet 		 map[string][]string
 	encryptedSet	 map[string]string
 	pendingSet		 map[string]common.Hash
 	verifiedSet		 map[string]common.Hash
-	VerifiedChan	 chan string
+	VerifiedChan	 chan VerifiedMain
 
 	encryptedSubSet  map[string]string
 	pendingSubSet	 map[string]string
 	verifiedSubSet	 map[string]string
-	VerifiedSubChan  chan string
+	VerifiedSubChan  chan VerifiedSub
 
 	encryptedHSet  map[string][]string
 	pendingHSet	 map[string][]string
@@ -61,6 +74,7 @@ type SharePool struct {
 }
 
 type SubData struct {
+	SubID string
 	H string
 	Amain string
 	S string
@@ -83,12 +97,12 @@ func NewSharePool() *SharePool{
 		encryptedSet: make(map[string]string),
 		pendingSet: make(map[string]common.Hash),
 		verifiedSet: make(map[string]common.Hash),
-		VerifiedChan:make(chan string, chanSizeLimit),
+		VerifiedChan:make(chan VerifiedMain, chanSizeLimit),
 
 		encryptedSubSet: make(map[string]string),
 		pendingSubSet: make(map[string]string),
 		verifiedSubSet: make(map[string]string),
-		VerifiedSubChan:make(chan string, chanSizeLimit),
+		VerifiedSubChan:make(chan VerifiedSub, chanSizeLimit),
 		SubChan:make(chan *SubData, chanSizeLimit),
 
 		encryptedHSet : make(map[string][]string),
@@ -122,11 +136,12 @@ func (self *SharePool) SaveEncryptedSub(addrSubIDstring string, data string) {
 	self.pendingSubSet[addrSubIDstring] = data
 }
 
-func (self *SharePool) SaveSubData(S string, H string) {
+func (self *SharePool) SaveSubData(S string, H string, subID string) {
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	self.encryptedHSet[S] =  append(self.encryptedHSet[S], H)
 	self.encryptedHSet[S] = append(self.encryptedHSet[S], S)
+	self.encryptedHSet[S] = append(self.encryptedHSet[S], subID)
 	fmt.Println("encryptedHSet======", self.encryptedHSet)
 }
 
@@ -183,23 +198,35 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 			id := userData.CertType + "-" + userData.Id
 			idHash := hexutil.Encode(crypto.Keccak256Hash([]byte(id)).Bytes())
+			var status int64
 			if idHash != decrypedAndVerifyData[0] {
 				log.Error("Verify certHash and verifyHash failed")
-				continue
+				status = 4
 			}
 
 			log.Info("Decrypt received shared message", "msg", string(pt))
+			status = 3
+			regID, err := strconv.Atoi(A)
+			if err != nil {
+				fmt.Println("registerID error", err)
+			}
 
+			verifiedData := VerifiedMain{
+				RegisterID: big.NewInt(int64(regID)),
+				Hashkey: common.HexToHash(decrypedAndVerifyData[0]),
+				Status: big.NewInt(status),
+			}
 			//Confirm stat with the contract
 			self.verifiedSet[A] = self.pendingSet[A]
-			self.VerifiedChan <- A
+			self.VerifiedChan <- verifiedData
 			delete(self.pendingSet, A)
 			delete(self.encryptedSet, A)
 		}
 
-		if data, ok := self.encryptedSubSet[A]; ok {
+		if subData, ok := self.encryptedSubSet[A]; ok {
+			data := strings.Split(subData, "+")
 			//Decryption
-			ct, err := hexutil.Decode(data)
+			ct, err := hexutil.Decode(data[1])
 			if err != nil {
 				log.Error("Decode sub encdata", "err", err)
 			}
@@ -234,7 +261,8 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 
 			if A1 != nil && S1 != nil {
 				subdata := &SubData{
-					H: A,
+					SubID: A,
+					H: data[0],
 					Amain: A11,
 					S: S11,
 				}
@@ -266,10 +294,23 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			genH := generateH(subS, hash)
 			genHstring := common.ToHex(crypto.FromECDSAPub(&genH))
 			log.Info("Generate sub account pubkey", "subPub", genHstring)
+			var status int64
 			if HSverify[0] == genHstring {
 				log.Info("Verified sub account: valid! ", "subPub", HSverify[0])
-				self.VerifiedSubChan <- HSverify[0]
+				status = 3
 			}
+			status = 4
+			fmt.Println("verified sub address ID", HSverify[2])
+			regiID, err := strconv.Atoi(HSverify[2])
+			if err != nil {
+				fmt.Println("registerID error", err)
+			}
+			verifiedSub := VerifiedSub{
+				RegisterID: big.NewInt(int64(regiID)),
+				Status: big.NewInt(status),
+			}
+			self.VerifiedSubChan <- verifiedSub
+
 			self.verifiedHSet[A] = self.pendingHSet[A]
 			delete(self.pendingHSet, A)
 			delete(self.encryptedHSet, A)

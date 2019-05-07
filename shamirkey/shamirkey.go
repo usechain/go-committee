@@ -30,7 +30,6 @@ import (
 	"github.com/usechain/go-committee/shamirkey/verify"
 	"github.com/usechain/go-committee/node/config"
 	"github.com/usechain/go-committee/contract/creditNew"
-	"github.com/usechain/go-usechain/common/hexutil"
 )
 
 //Read committee config from contract
@@ -196,22 +195,14 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 	for {
 		select {
 		case v := <- pool.VerifiedChan:
-			pubkey := crypto.ToECDSAPub(common.FromHex(v))
-			log.Info("VerifiedChan pubkey", "pubkey", pubkey)
-
-			addr := crypto.PubkeyToAddress(*pubkey)
-			certHash := pool.GetVerifiedCertHash(v)
-
-			err := creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
+			err := creditNew.ConfirmCreditSystemAccount(usechain, v)
 			if err == nil {
 				log.Info("ConfirmCreditSystemAccount", "result", "success")
 			}
-		case s := <- pool.VerifiedSubChan:
 
-			pubkey := crypto.ToECDSAPub(common.FromHex(s))
-			addr := crypto.PubkeyToAddress(*pubkey)
-			log.Info("Verifyed sub address", "addr", hexutil.Encode(addr[:]))
-			err := creditNew.ConfirmSubAccount(usechain, addr)
+		case s := <- pool.VerifiedSubChan:
+			log.Info("Verifyed sub account", "ID", s.RegisterID)
+			err := creditNew.ConfirmSubAccount(usechain, s)
 			if err == nil {
 				log.Info("ConfirmSubAccount", "result", "success")
 			}
