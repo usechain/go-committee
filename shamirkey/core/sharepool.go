@@ -150,6 +150,8 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	rpc := usechain.NodeRPC
 	coinbase := usechain.UserProfile.Address
 	creditCTR, _ := contract.New("credit contract", "", contract.CreditAddr, contract.CreditABI)
+	var status int64
+	var regID int
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	for A, shares := range self.shareSet {
@@ -188,32 +190,28 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 			if err != nil {
 				log.Error("decryption: ", "err", err.Error())
-				delete(self.pendingSet, A)
-				delete(self.encryptedSet, A)
-				delete(self.shareSet, A)
-				continue
-			}
-
-			userData := UserData{}
-			err = json.Unmarshal(pt, &userData)
-			if err != nil {
-				log.Debug("Unmarshal failed: ", "err", err)
-			}
-
-			id := userData.CertType + "-" + userData.Id
-			idHash := hexutil.Encode(crypto.Keccak256Hash([]byte(id)).Bytes())
-			var status int64
-			if idHash != decrypedAndVerifyData[0] {
-				log.Error("Verify certHash and verifyHash failed")
 				status = 4
 			} else {
-				status = 3
-			}
+				log.Info("Decrypt received shared message", "msg", string(pt))
+				userData := UserData{}
+				err = json.Unmarshal(pt, &userData)
+				if err != nil {
+					log.Debug("Unmarshal failed: ", "err", err)
+				}
 
-			log.Info("Decrypt received shared message", "msg", string(pt))
-			regID, err := strconv.Atoi(A)
-			if err != nil {
-				fmt.Println("registerID error", err)
+				id := userData.CertType + "-" + userData.Id
+				idHash := hexutil.Encode(crypto.Keccak256Hash([]byte(id)).Bytes())
+				if idHash != decrypedAndVerifyData[0] {
+					log.Error("Verify certHash and verifyHash failed")
+					status = 4
+				} else {
+					status = 3
+				}
+
+				regID, err = strconv.Atoi(A)
+				if err != nil {
+					fmt.Println("registerID error", err)
+				}
 			}
 
 			verifiedData := VerifiedMain{
@@ -225,6 +223,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			//Confirm stat with the contract
 			self.verifiedSet[A] = self.pendingSet[A]
 			self.VerifiedChan <- verifiedData
+			delete(self.shareSet,A)
 			delete(self.pendingSet, A)
 			delete(self.encryptedSet, A)
 		}
@@ -237,60 +236,65 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 				log.Error("Decode sub encdata", "err", err)
 			}
 
+			regiID, err := strconv.Atoi(A)
+			if err != nil {
+				fmt.Println("registerID error", err)
+			}
+
 			pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 			if err != nil {
 				log.Error("decryption sub encAS: ", "err", err)
-				//self.SubFailedDecrypted <- A
-				delete(self.shareSet, A)
-				continue
-			}
-
-			log.Info("Decrypt received subaccount shared message", "msg", string(pt))
-			ASbyte, _ := hex.DecodeString(string(pt))
-			A1, S1, err := GeneratePKPairFromSubAddress(ASbyte)
-			if err != nil {
-				log.Error("GeneratePKPairFromSubAddress", "err", err)
-				delete(self.shareSet, A)
-				continue
-			}
-
-			A11 := common.ToHex(crypto.FromECDSAPub(A1))
-			S11 := common.ToHex(crypto.FromECDSAPub(S1))
-			fmt.Println("A1:::", A11)
-			fmt.Println("S1---===", S11)
-
-			// CHECK A11 is main account
-			Abyte,_:=hexutil.Decode(A11)
-			Apub:=crypto.ToECDSAPub(Abyte)
-			Aaddr := crypto.PubkeyToAddress(*Apub)
-			status, err := creditCTR.ContractCall(rpc, coinbase, "getAccountStatus", Aaddr)
-			if err != nil {
-				log.Debug("Get main account status failed", "err", err)
-				delete(self.shareSet, A)
-			}
-			statusInt, _ := big.NewInt(0).SetString(status[2:], 16)
-			if statusInt.Int64() != 3 {
-				log.Info("Sub account is not from main account", "mainAccount status", statusInt.Int64())
-				log.Info("Sub account is not from main account", "mainAccount", Aaddr)
-				regiID, err := strconv.Atoi(A)
-				if err != nil {
-					fmt.Println("registerID error", err)
-				}
-				verifiedSub := VerifiedSub{
-					RegisterID: big.NewInt(int64(regiID)),
-					Status: big.NewInt(4),
-				}
-				self.VerifiedSubChan <- verifiedSub
 			} else {
-				subdata := &SubData{
-					SubID: A,
-					H: data[0],
-					Amain: A11,
-					S: S11,
+				log.Info("Decrypt received subaccount shared message", "msg", string(pt))
+				ASbyte, _ := hex.DecodeString(string(pt))
+				A1, S1, err := GeneratePKPairFromSubAddress(ASbyte)
+				if err != nil {
+					log.Error("GeneratePKPairFromSubAddress", "err", err)
+					verifiedSub := VerifiedSub{
+						RegisterID: big.NewInt(int64(regiID)),
+						Status: big.NewInt(4),
+					}
+					self.VerifiedSubChan <- verifiedSub
+				} else {
+					A11 := common.ToHex(crypto.FromECDSAPub(A1))
+					S11 := common.ToHex(crypto.FromECDSAPub(S1))
+					log.Info("GeneratePKPairFromSubAddress", "A1", A11, "S1", S11)
+
+					// CHECK A11 is main account
+					Abyte,_:=hexutil.Decode(A11)
+					Apub:=crypto.ToECDSAPub(Abyte)
+					Aaddr := crypto.PubkeyToAddress(*Apub)
+					status, err := creditCTR.ContractCall(rpc, coinbase, "getAccountStatus", Aaddr)
+					if err != nil {
+						log.Debug("Get main account status failed", "err", err)
+						verifiedSub := VerifiedSub{
+							RegisterID: big.NewInt(int64(regiID)),
+							Status: big.NewInt(4),
+						}
+						self.VerifiedSubChan <- verifiedSub
+					}
+					statusInt, _ := big.NewInt(0).SetString(status[2:], 16)
+					if statusInt.Int64() != 3 {
+						log.Info("Sub account is not from main account", "mainAccount status", statusInt.Int64())
+						log.Info("Sub account is not from main account", "mainAccount", Aaddr)
+						verifiedSub := VerifiedSub{
+							RegisterID: big.NewInt(int64(regiID)),
+							Status: big.NewInt(4),
+						}
+						self.VerifiedSubChan <- verifiedSub
+					} else {
+						subdata := &SubData{
+							SubID: A,
+							H: data[0],
+							Amain: A11,
+							S: S11,
+						}
+						self.SubChan <- subdata
+						self.verifiedSubSet[A] = self.pendingSubSet[A]
+					}
 				}
-				self.SubChan <- subdata
-				self.verifiedSubSet[A] = self.pendingSubSet[A]
 			}
+			delete(self.shareSet,A)
 			delete(self.pendingSubSet, A)
 			delete(self.encryptedSubSet, A)
 		}
@@ -316,7 +320,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			log.Info("verified sub address ID", "addrID", HSverify[2])
 			regiID, err := strconv.Atoi(HSverify[2])
 			if err != nil {
-				fmt.Println("registerID error", err)
+				log.Error("registerID error", "err", err)
 			}
 			verifiedSub := VerifiedSub{
 				RegisterID: big.NewInt(int64(regiID)),
