@@ -298,9 +298,10 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			if HSverify[0] == genHstring {
 				log.Info("Verified sub account: valid! ", "subPub", HSverify[0])
 				status = 3
+			} else {
+				status = 4
 			}
-			status = 4
-			fmt.Println("verified sub address ID", HSverify[2])
+			log.Info("verified sub address ID", "addrID", HSverify[2])
 			regiID, err := strconv.Atoi(HSverify[2])
 			if err != nil {
 				fmt.Println("registerID error", err)
