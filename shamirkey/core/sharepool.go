@@ -221,6 +221,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 				Hashkey: common.HexToHash(decrypedAndVerifyData[0]),
 				Status: big.NewInt(status),
 			}
+
 			//Confirm stat with the contract
 			self.verifiedSet[A] = self.pendingSet[A]
 			self.VerifiedChan <- verifiedData
@@ -239,7 +240,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			pt, err := priv.Decrypt(rand.Reader, ct, nil, nil)
 			if err != nil {
 				log.Error("decryption sub encAS: ", "err", err)
-				// TODO:   SubFailedDecrypted 添加到合约
 				//self.SubFailedDecrypted <- A
 				delete(self.shareSet, A)
 				continue
@@ -250,6 +250,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			A1, S1, err := GeneratePKPairFromSubAddress(ASbyte)
 			if err != nil {
 				log.Error("GeneratePKPairFromSubAddress", "err", err)
+				delete(self.shareSet, A)
 				continue
 			}
 
@@ -258,17 +259,19 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			fmt.Println("A1:::", A11)
 			fmt.Println("S1---===", S11)
 
-			// CHECK subdata.Amain
+			// CHECK A11 is main account
 			Abyte,_:=hexutil.Decode(A11)
 			Apub:=crypto.ToECDSAPub(Abyte)
 			Aaddr := crypto.PubkeyToAddress(*Apub)
 			status, err := creditCTR.ContractCall(rpc, coinbase, "getAccountStatus", Aaddr)
 			if err != nil {
 				log.Debug("Get main account status failed", "err", err)
-				continue
+				delete(self.shareSet, A)
 			}
 			statusInt, _ := big.NewInt(0).SetString(status[2:], 16)
 			if statusInt.Int64() != 3 {
+				log.Info("Sub account is not from main account", "mainAccount status", statusInt.Int64())
+				log.Info("Sub account is not from main account", "mainAccount", Aaddr)
 				regiID, err := strconv.Atoi(A)
 				if err != nil {
 					fmt.Println("registerID error", err)
@@ -278,10 +281,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 					Status: big.NewInt(4),
 				}
 				self.VerifiedSubChan <- verifiedSub
-				continue
-			}
-
-			if A1 != nil && S1 != nil {
+			} else {
 				subdata := &SubData{
 					SubID: A,
 					H: data[0],
@@ -293,16 +293,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			}
 			delete(self.pendingSubSet, A)
 			delete(self.encryptedSubSet, A)
-
-			//pub := generateH(S1, privECDSA)
-			//AA := common.ToHex(crypto.FromECDSAPub(&pub))
-			//fmt.Println("A1=[hash([a]B)]G+S", AA)
-			//if AA != A {
-			//	log.Error("Verify sub account failed")
-			//	return
-			//}
-			////Confirm stat with the contract
-			//self.VerifiedSubChan <- A
 		}
 
 		if HSverify, ok := self.encryptedHSet[A]; ok {
