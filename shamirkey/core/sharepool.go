@@ -36,6 +36,7 @@ import (
 	"time"
 	"strconv"
 	"math/big"
+	"github.com/usechain/go-committee/contract/contract"
 )
 
 const chanSizeLimit = 10
@@ -146,6 +147,9 @@ func (self *SharePool) SaveSubData(S string, H string, subID string) {
 }
 
 func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
+	rpc := usechain.NodeRPC
+	coinbase := usechain.UserProfile.Address
+	creditCTR, _ := contract.New("credit contract", "", contract.CreditAddr, contract.CreditABI)
 	self.mu.Lock()
 	defer self.mu.Unlock()
 	for A, shares := range self.shareSet {
@@ -202,10 +206,11 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			if idHash != decrypedAndVerifyData[0] {
 				log.Error("Verify certHash and verifyHash failed")
 				status = 4
+			} else {
+				status = 3
 			}
 
 			log.Info("Decrypt received shared message", "msg", string(pt))
-			status = 3
 			regID, err := strconv.Atoi(A)
 			if err != nil {
 				fmt.Println("registerID error", err)
@@ -235,12 +240,6 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			if err != nil {
 				log.Error("decryption sub encAS: ", "err", err)
 				// TODO:   SubFailedDecrypted 添加到合约
-				for Ax , _ := range self.shareSet{
-					fmt.Println("lets see shareSet+++++++++++++++++++", Ax)
-				}
-				for Ax , bx := range self.encryptedSubSet{
-					fmt.Println("lets see encryptedSubSet+++++++++++++++++++", Ax,bx)
-				}
 				//self.SubFailedDecrypted <- A
 				delete(self.shareSet, A)
 				continue
@@ -258,6 +257,29 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 			S11 := common.ToHex(crypto.FromECDSAPub(S1))
 			fmt.Println("A1:::", A11)
 			fmt.Println("S1---===", S11)
+
+			// CHECK subdata.Amain
+			Abyte,_:=hexutil.Decode(A11)
+			Apub:=crypto.ToECDSAPub(Abyte)
+			Aaddr := crypto.PubkeyToAddress(*Apub)
+			status, err := creditCTR.ContractCall(rpc, coinbase, "getAccountStatus", Aaddr)
+			if err != nil {
+				log.Debug("Get main account status failed", "err", err)
+				continue
+			}
+			statusInt, _ := big.NewInt(0).SetString(status[2:], 16)
+			if statusInt.Int64() != 3 {
+				regiID, err := strconv.Atoi(A)
+				if err != nil {
+					fmt.Println("registerID error", err)
+				}
+				verifiedSub := VerifiedSub{
+					RegisterID: big.NewInt(int64(regiID)),
+					Status: big.NewInt(4),
+				}
+				self.VerifiedSubChan <- verifiedSub
+				continue
+			}
 
 			if A1 != nil && S1 != nil {
 				subdata := &SubData{
