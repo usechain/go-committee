@@ -135,7 +135,7 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 		Nonce = uint64(nonce)
 	}
 
-	tx := types.NewTransaction(Nonce, common.HexToAddress(crt.Address), nil, 1000000, big.NewInt(20000000000), bytes)
+	tx := types.NewTransaction(Nonce, common.HexToAddress(crt.Address), nil, 5000000, big.NewInt(20000000000), bytes)
 	ac, err := account.CommitteeAccount(common.HexToAddress(coinbase), ks)
 	if err != nil {
 		fmt.Println("account:", err)
