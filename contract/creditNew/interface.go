@@ -24,6 +24,7 @@ import (
 	"github.com/usechain/go-usechain/common/hexutil"
 	"github.com/usechain/go-usechain/node"
 	"strconv"
+	"encoding/hex"
 )
 
 //The struct of the identity
@@ -57,7 +58,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 	subSet := NewSet()
 	processScan := func() {
 		// get unconfirmed main address number
-		getUnConfirmedMainAddressLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnConfirmedMainAddressLen")
+		getUnConfirmedMainAddressLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnConfirmedMainAddrLen")
 		if err != nil {
 			log.Error("contract call", "err", err)
 			return
@@ -151,7 +152,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 	processSubScan := func() {
 		// get unconfirmed sub address number
-		UnConfirmedSubLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnConfirmedSubAddressLen")
+		UnConfirmedSubLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnConfirmedSubAddrLen")
 		if err != nil {
 			log.Error("contract call", "err", err)
 			return
@@ -211,6 +212,70 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 		pool.SaveSubData(subdata.S, subdata.H, subdata.SubID)
 	}
 
+	processScanUnEncrypted := func() {
+		// get unconfirmed sub address number
+		unEncryptedSubLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnEncryptedSubAddrLen")
+		if err != nil {
+			log.Error("contract call", "err", err)
+			return
+		}
+
+		if unEncryptedSubLen == contract.ContractZero || unEncryptedSubLen == contract.ContractNull{
+			return
+		}
+		unconfirmedSub, _ := big.NewInt(0).SetString(unEncryptedSubLen[2:], 16)
+
+		for i := int64(0); i < unconfirmedSub.Int64(); i++ {
+			// get unconfirmed address
+			UnEncryptedSubAddrID, err := creditCTR.ContractCall(rpc, coinbase, "UnEncryptedSubAddrID", big.NewInt(i))
+			if err != nil {
+				log.Debug("Read UnEncryptedSubAddrID failed", "err", err)
+				return
+			}
+			subID, _ := big.NewInt(0).SetString(UnEncryptedSubAddrID[2:], 16)
+			SubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "RegisterIDtoAddr", big.NewInt(subID.Int64()))
+			if err != nil {
+				log.Debug("Read unconfirmed sub address failed", "err", err)
+				return
+			}
+
+			SubAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "SubAccount", SubAddr[1])
+			if err != nil {
+				log.Debug("Read unconfirmed SubAccount failed", "err", err)
+				return
+			}
+
+			subPubkey, ok := (SubAccount[2]).(string)
+			if !ok {
+				log.Error("It's not ok for", "type", reflect.TypeOf(SubAccount[2]))
+				return
+			}
+
+			AS, ok := (SubAccount[3]).(string)
+			if !ok {
+				log.Error("It's not ok for", "type", reflect.TypeOf(SubAccount[3]))
+				return
+			}
+
+			addrSubIDstring := strconv.Itoa(int(subID.Int64()))
+			if subSet.Has(string(addrSubIDstring)) {
+				continue
+			} else {
+				subSet.Add(string(addrSubIDstring))
+				ASbyte, _ := hex.DecodeString(AS)
+				A1, S1, err := core.GeneratePKPairFromSubAddress(ASbyte)
+				A11 := common.ToHex(crypto.FromECDSAPub(A1))
+				S11 := common.ToHex(crypto.FromECDSAPub(S1))
+				if err != nil {
+					log.Error("GeneratePKPairFromSubAddress error", err)
+				}
+				sendSubShared(usechain, nodelist, A11, S11, max)
+				// many A with one HS
+				pool.SaveSubData(S11, subPubkey, addrSubIDstring)
+			}
+		}
+	}
+
 	loop := true
 	for loop {
 		select {
@@ -226,6 +291,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 		default:
 			processScan()
 			processSubScan()
+			processScanUnEncrypted()
 			time.Sleep(time.Second * 5)
 		}
 	}
