@@ -42,6 +42,7 @@ import (
 const chanSizeLimit = 10
 
 type VerifiedMain struct {
+	Addr common.Address
 	RegisterID *big.Int
 	Hashkey common.Hash
 	Status  *big.Int
@@ -214,7 +215,12 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 				}
 			}
 
+			pubstringTObyte,_:=hexutil.Decode(decrypedAndVerifyData[2])
+			userPublic:=crypto.ToECDSAPub(pubstringTObyte)
+			address := crypto.PubkeyToAddress(*userPublic)
+
 			verifiedData := VerifiedMain{
+				Addr:address,
 				RegisterID: big.NewInt(int64(regID)),
 				Hashkey: common.HexToHash(decrypedAndVerifyData[0]),
 				Status: big.NewInt(status),

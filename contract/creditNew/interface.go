@@ -143,7 +143,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				}
 				log.Debug("Get public key", "key", string(pubkey))
 
-				decrypedAndVerifyData := strings.Join([]string{hashKeyString, id.Data},"+")
+				decrypedAndVerifyData := strings.Join([]string{hashKeyString, id.Data, string(pubkey)},"+")
 				sendPublickeyShared(usechain, nodelist, string(pubkey), max, addrIDstring)
 				pool.SaveEncryptedData(addrIDstring, common.Hash(hashKey), decrypedAndVerifyData)
 			}
@@ -303,7 +303,7 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, mainData core.Verifie
 	creditCTR, _ := contract.New("credit contract", "", contract.CreditAddr, contract.CreditABI)
 
 	// verify hash
-	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", mainData.RegisterID, mainData.Hashkey, mainData.Status)
+	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", mainData.RegisterID, mainData.Addr, mainData.Hashkey, mainData.Status)
 	log.Info("VerifyHash transaction", "hash", res)
 	if err != nil {
 		log.Error("contract call", "err", err)
