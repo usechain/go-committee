@@ -272,7 +272,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 					Aaddr := crypto.PubkeyToAddress(*Apub)
 					status, err := creditCTR.ContractCall(rpc, coinbase, "getAccountStatus", Aaddr)
 					if err != nil {
-						log.Debug("Get main account status failed", "err", err)
+						log.Error("Get main account status failed", "err", err)
 						verifiedSub := VerifiedSub{
 							RegisterID: big.NewInt(int64(regiID)),
 							Status: big.NewInt(4),
