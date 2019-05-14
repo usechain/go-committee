@@ -208,13 +208,11 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 				} else {
 					status = 3
 				}
-
-				regID, err = strconv.Atoi(A)
-				if err != nil {
-					fmt.Println("registerID error", err)
-				}
 			}
-
+			regID, err = strconv.Atoi(A)
+			if err != nil {
+				fmt.Println("registerID error", err)
+			}
 			pubstringTObyte,_:=hexutil.Decode(decrypedAndVerifyData[2])
 			userPublic:=crypto.ToECDSAPub(pubstringTObyte)
 			address := crypto.PubkeyToAddress(*userPublic)
