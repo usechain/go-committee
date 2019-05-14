@@ -28,7 +28,6 @@ import (
 	"github.com/usechain/go-usechain/core/vm"
 	"github.com/usechain/go-usechain/ethdb"
 	"github.com/usechain/go-usechain/params"
-
 )
 
 // So we can deterministically seed different blockchains
@@ -156,9 +155,9 @@ func (b *BlockGen) OffsetTime(seconds int64) {
 // become part of the block. If gen is nil, the blocks will be empty
 // and their coinbase will be the zero address.
 //
-// Blocks created by GenerateChain do not contain valid proof of work
+// Blocks created by GenerateChain do not contain valid random proof of work
 // values. Inserting them into BlockChain requires use of FakePow or
-// a similar non-validating proof of work implementation.
+// a similar non-validating random proof of work implementation.
 func GenerateChain(config *params.ChainConfig, parent *types.Block, engine consensus.Engine, db ethdb.Database, n int, gen func(int, *BlockGen)) ([]*types.Block, []types.Receipts) {
 	if config == nil {
 		config = params.TestChainConfig
@@ -231,12 +230,13 @@ func makeHeader(chain consensus.ChainReader, parent *types.Block, state *state.S
 		Coinbase:   parent.Coinbase(),
 		Difficulty: engine.CalcDifficulty(chain, time.Uint64(),
 			&types.Header{
-				Number:     new(big.Int).Add(parent.Number(), common.Big1),
-				Time:       time,
-				Coinbase:   parent.Coinbase(),
-				IsCheckPoint:	parent.IsCheckPoint(),
-				MinerQrSignature:	parent.MinerQrSignature(),
-				DifficultyLevel:	parent.DifficultyLevel(),
+				Number:           new(big.Int).Add(parent.Number(), common.Big1),
+				Time:             time,
+				Coinbase:         parent.Coinbase(),
+				IsCheckPoint:     parent.IsCheckPoint(),
+				MinerQrSignature: parent.MinerQrSignature(),
+				DifficultyLevel:  parent.DifficultyLevel(),
+				PrimaryMiner:     parent.PrimaryMiner(),
 			},
 			&types.Header{
 				Number:     parent.Number(),
@@ -259,7 +259,7 @@ func newCanonical(engine consensus.Engine, n int, full bool) (ethdb.Database, *B
 	db, _ := ethdb.NewMemDatabase()
 	genesis := gspec.MustCommit(db)
 
-	blockchain, _ := NewBlockChain(db, nil, params.AllEthashProtocolChanges, engine, vm.Config{})
+	blockchain, _ := NewBlockChain(db, nil, params.AllRpowProtocolChanges, engine, vm.Config{})
 	// Create and inject the requested chain
 	if n == 0 {
 		return db, blockchain, nil

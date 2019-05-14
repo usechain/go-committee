@@ -87,9 +87,12 @@ func (crt *Contract) ContractCall(node *usedrpc.UseRPC, coinbase string, method 
 		return "", err
 	}
 
+	coinbaseUM := common.AddressToBase58Address(common.HexToAddress(coinbase)).String()
+	ctrUM := common.AddressToBase58Address(common.HexToAddress(crt.Address)).String()
+
 	tx := usedrpc.T {
-		From:  coinbase,
-		To:    crt.Address,
+		From:  coinbaseUM,
+		To:    ctrUM,
 		Value: big.NewInt(0),
 		Data:  hexutil.Encode(bytes),
 	}
@@ -135,7 +138,7 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 		Nonce = uint64(nonce)
 	}
 
-	tx := types.NewTransaction(Nonce, common.HexToAddress(crt.Address), nil, 5000000, big.NewInt(20000000000), bytes)
+	tx := types.NewTransaction(Nonce, common.HexToAddress(crt.Address), nil, 10000000, big.NewInt(20000000000), bytes)
 	ac, err := account.CommitteeAccount(common.HexToAddress(coinbase), ks)
 	if err != nil {
 		fmt.Println("account:", err)

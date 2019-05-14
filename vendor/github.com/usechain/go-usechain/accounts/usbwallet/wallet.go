@@ -25,12 +25,12 @@ import (
 	"sync"
 	"time"
 
+	"github.com/karalabe/hid"
 	ethereum "github.com/usechain/go-usechain"
 	"github.com/usechain/go-usechain/accounts"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/core/types"
 	"github.com/usechain/go-usechain/log"
-	"github.com/karalabe/hid"
 )
 
 // Maximum time between wallet health checks to detect USB unplugs.
@@ -560,4 +560,9 @@ func (w *wallet) SignHashWithPassphrase(account accounts.Account, passphrase str
 // Since USB wallets don't rely on passphrases, these are silently ignored.
 func (w *wallet) SignTxWithPassphrase(account accounts.Account, passphrase string, tx *types.Transaction, chainID *big.Int) (*types.Transaction, error) {
 	return w.SignTx(account, tx, chainID)
+}
+
+// Publickey return the public key based on the account
+func (w *wallet) Publickey(account accounts.Account) (string, error) {
+	return "", fmt.Errorf("can't export public key from usewallet")
 }

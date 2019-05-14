@@ -50,6 +50,9 @@ const (
 	// txChanSize is the size of channel listening to NewTxsEvent.
 	// The number is referenced from the size of tx pool.
 	txChanSize = 4096 * 16
+
+	// txsCache is the size of tx sending cache
+	txCacheLimit = 1024
 )
 
 var (
@@ -85,6 +88,7 @@ type ProtocolManager struct {
 	txsCh         chan core.NewTxsEvent
 	txsSub        event.Subscription
 	minedBlockSub *event.TypeMuxSubscription
+	txsCache      []*types.Transaction
 
 	// channels for fetcher, syncer, txsyncLoop
 	newPeerCh   chan *peer
@@ -188,9 +192,9 @@ func (pm *ProtocolManager) removePeer(id string) {
 	if peer == nil {
 		return
 	}
-	log.Debug("Removing Ethereum peer", "peer", id)
+	log.Debug("Removing Usechain peer", "peer", id)
 
-	// Unregister the peer from the downloader and Ethereum peer set
+	// Unregister the peer from the downloader and Usechain peer set
 	pm.downloader.UnregisterPeer(id)
 	if err := pm.peers.Unregister(id); err != nil {
 		log.Error("Peer removal failed", "peer", id, "err", err)
@@ -219,7 +223,7 @@ func (pm *ProtocolManager) Start(maxPeers int) {
 }
 
 func (pm *ProtocolManager) Stop() {
-	log.Info("Stopping Ethereum protocol")
+	log.Info("Stopping Usechain protocol")
 
 	pm.txsSub.Unsubscribe()        // quits txBroadcastLoop
 	pm.minedBlockSub.Unsubscribe() // quits blockBroadcastLoop
@@ -240,7 +244,7 @@ func (pm *ProtocolManager) Stop() {
 	// Wait for all peer handler goroutines and the loops to come down.
 	pm.wg.Wait()
 
-	log.Info("Ethereum protocol stopped")
+	log.Info("Usechain protocol stopped")
 }
 
 func (pm *ProtocolManager) newPeer(pv int, p *p2p.Peer, rw p2p.MsgReadWriter) *peer {
@@ -254,9 +258,9 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	if pm.peers.Len() >= pm.maxPeers && !p.Peer.Info().Network.Trusted {
 		return p2p.DiscTooManyPeers
 	}
-	p.Log().Debug("Ethereum peer connected", "name", p.Name())
+	p.Log().Debug("Usechain peer connected", "name", p.Name())
 
-	// Execute the Ethereum handshake
+	// Execute the Usechain handshake
 	var (
 		genesis = pm.blockchain.Genesis()
 		head    = pm.blockchain.CurrentHeader()
@@ -265,7 +269,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 		td      = pm.blockchain.GetTd(hash, number)
 	)
 	if err := p.Handshake(pm.networkId, td, hash, genesis.Hash()); err != nil {
-		p.Log().Debug("Ethereum handshake failed", "err", err)
+		p.Log().Debug("Usechain handshake failed", "err", err)
 		return err
 	}
 	if rw, ok := p.rw.(*meteredMsgReadWriter); ok {
@@ -273,7 +277,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	}
 	// Register the peer locally
 	if err := pm.peers.Register(p); err != nil {
-		p.Log().Error("Ethereum peer registration failed", "err", err)
+		p.Log().Error("Usechain peer registration failed", "err", err)
 		return err
 	}
 	defer pm.removePeer(p.id)
@@ -289,7 +293,7 @@ func (pm *ProtocolManager) handle(p *peer) error {
 	// main loop. handle incoming messages.
 	for {
 		if err := pm.handleMsg(p); err != nil {
-			p.Log().Debug("Ethereum message handling failed", "err", err)
+			p.Log().Debug("Usechain message handling failed", "err", err)
 			return err
 		}
 	}
@@ -703,16 +707,17 @@ func (pm *ProtocolManager) BroadcastTxs(txs types.Transactions) {
 	for _, tx := range txs {
 		peers := pm.peers.PeersWithoutTx(tx.Hash())
 		transfer := peers
-		if tx.Flag() != 1 {
-			// Send the block to a subset of our peers if not a pbft transaction
-			transfer = peers[:int(math.Sqrt(float64(len(peers))))]
-		}
+		//if tx.Flag() != 1 && len(peers) > 9 && len(txs) >= txCacheLimit / 2 {
+		//	// Send the block to a subset of our peers if not a pbft transaction
+		//	transfer = peers[:int(math.Sqrt(float64(len(peers))))]
+		//}
 
 		for _, peer := range transfer {
 			txset[peer] = append(txset[peer], tx)
 		}
 		log.Trace("Broadcast transaction", "hash", tx.Hash(), "recipients", len(peers))
 	}
+	log.Trace("broadcast a bunch of transactions", "cnt", len(txs))
 	// FIXME include this again: peers = peers[:int(math.Sqrt(float64(len(peers))))]
 	for peer, txs := range txset {
 		peer.SendTransactions(txs)
@@ -732,11 +737,23 @@ func (self *ProtocolManager) minedBroadcastLoop() {
 }
 
 func (self *ProtocolManager) txBroadcastLoop() {
+	t := time.NewTimer(100 * time.Millisecond)
 	for {
 		select {
 		case event := <-self.txsCh:
-			self.BroadcastTxs(event.Txs)
-
+			for _, tx := range event.Txs {
+				self.txsCache = append(self.txsCache, tx)
+			}
+			if len(self.txsCache) >= txCacheLimit {
+				self.BroadcastTxs(self.txsCache)
+				self.txsCache = self.txsCache[:0]
+			}
+		case <-t.C:
+			if len(self.txsCache) > 0 {
+				self.BroadcastTxs(self.txsCache)
+				self.txsCache = self.txsCache[:0]
+			}
+			t.Reset(100 * time.Millisecond)
 		// Err() channel will be closed when unsubscribing.
 		case <-self.txsSub.Err():
 			return

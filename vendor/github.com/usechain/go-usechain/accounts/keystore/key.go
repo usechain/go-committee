@@ -21,21 +21,21 @@ import (
 	"crypto/ecdsa"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"github.com/btcsuite/btcd/btcec"
+	"github.com/pborman/uuid"
+	"github.com/usechain/go-usechain/accounts"
+	"github.com/usechain/go-usechain/common"
+	"github.com/usechain/go-usechain/common/hexutil"
+	"github.com/usechain/go-usechain/crypto"
+	"github.com/usechain/go-usechain/log"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
-	"errors"
-	"github.com/usechain/go-usechain/accounts"
-	"github.com/usechain/go-usechain/log"
-	"github.com/usechain/go-usechain/common"
-	"github.com/usechain/go-usechain/common/hexutil"
-	"github.com/usechain/go-usechain/crypto"
-	"github.com/pborman/uuid"
-	"github.com/btcsuite/btcd/btcec"
 )
 
 const (
@@ -51,7 +51,7 @@ type Key struct {
 	PrivateKey *ecdsa.PrivateKey
 
 	PrivateKey2 *ecdsa.PrivateKey
-	ABaddress common.ABaddress
+	SubAddress  common.SubAddress
 }
 
 type keyStore interface {
@@ -60,7 +60,6 @@ type keyStore interface {
 
 	// Loads an encrypted keyfile from disk
 	GetEncryptedKey(addr common.Address, filename string) (*Key, error)
-
 
 	// Writes and encrypts the key.
 	StoreKey(filename string, k *Key, auth string) error
@@ -76,11 +75,11 @@ type plainKeyJSON struct {
 }
 
 type encryptedKeyJSONV3 struct {
-	Address string     `json:"address"`
-	Crypto  cryptoJSON `json:"crypto"`
-	Id      string     `json:"id"`
-	Version int        `json:"version"`
-	ABaddress string     `json:"ABaddress"`
+	Address    string     `json:"address"`
+	Crypto     cryptoJSON `json:"crypto"`
+	Id         string     `json:"id"`
+	Version    int        `json:"version"`
+	SubAddress string     `json:"SubAddress"`
 }
 
 type encryptedKeyJSONV1 struct {
@@ -146,7 +145,7 @@ func newKeyFromECDSA(privateKeyECDSA *ecdsa.PrivateKey) *Key {
 		Address:    crypto.PubkeyToAddress(privateKeyECDSA.PublicKey),
 		PrivateKey: privateKeyECDSA,
 	}
-	//updateABaddress(key)
+	//updateSubAddress(key)
 	return key
 }
 
@@ -218,7 +217,7 @@ func writeKeyFile(file string, content []byte) error {
 // UTC--<created_at UTC ISO8601>-<address hex>
 func keyFileName(keyAddr common.Address) string {
 	ts := time.Now().UTC()
-	return fmt.Sprintf("UTC--%s--%s", toISO8601(ts), hex.EncodeToString(keyAddr[:]))
+	return fmt.Sprintf("UTC--%s--%s", toISO8601(ts), keyAddr)
 }
 
 func toISO8601(t time.Time) string {
@@ -232,11 +231,9 @@ func toISO8601(t time.Time) string {
 	return fmt.Sprintf("%04d-%02d-%02dT%02d-%02d-%02d.%09d%s", t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second(), t.Nanosecond(), tz)
 }
 
-
 // GeneratePKPairFromABddress represents the keystore to retrieve public key-pair from given Address
 func GeneratePKPairFromSubAddress(w []byte) (*ecdsa.PublicKey, *ecdsa.PublicKey, error) {
-	if len(w) != common.ABaddressLength {
-		fmt.Println(len(w))
+	if len(w) != common.SubAddressLength {
 		return nil, nil, ErrABaddressInvalid
 	}
 
@@ -254,14 +251,14 @@ func GeneratePKPairFromSubAddress(w []byte) (*ecdsa.PublicKey, *ecdsa.PublicKey,
 		return nil, nil, err
 	}
 
-	PK11:=(*ecdsa.PublicKey)(PK1)
-	PK22:=(*ecdsa.PublicKey)(PK2)
+	PK11 := (*ecdsa.PublicKey)(PK1)
+	PK22 := (*ecdsa.PublicKey)(PK2)
 	return PK11, PK22, nil
 }
 
-func ABaddrFromUncompressedRawBytes(raw []byte) (*common.ABaddress, error) {
+func SubAddrFromUncompressedRawBytes(raw []byte) (*common.SubAddress, error) {
 	if len(raw) != 32*2*2 {
-		return nil, errors.New("invalid uncompressed wan address len")
+		return nil, errors.New("invalid uncompressed sub address len")
 	}
 	pub := make([]byte, 65)
 	pub[0] = 0x004
@@ -272,17 +269,17 @@ func ABaddrFromUncompressedRawBytes(raw []byte) (*common.ABaddress, error) {
 	return GenerateABaddressFromPK(A, B), nil
 }
 
-func GenerateABaddressFromPK(A *ecdsa.PublicKey, B *ecdsa.PublicKey) *common.ABaddress {
-	var tmp common.ABaddress
+func GenerateABaddressFromPK(A *ecdsa.PublicKey, B *ecdsa.PublicKey) *common.SubAddress {
+	var tmp common.SubAddress
 	copy(tmp[:33], ECDSAPKCompression(A))
 	copy(tmp[33:], ECDSAPKCompression(B))
 	return &tmp
 }
 
-// storeNewABKey save AB account keystore file
-func storeNewABKey(ks keyStore,abBaseAddr common.ABaddress,AprivKey *ecdsa.PrivateKey, auth string) (*Key, accounts.Account, error) {
+// storeNewSubKey save AB account keystore file
+func storeNewSubKey(ks keyStore, committeePub string, AprivKey *ecdsa.PrivateKey, auth string) (*Key, accounts.Account, error) {
 
-	key, err := newABKey(abBaseAddr,AprivKey)
+	key, err := newSubKey(committeePub, AprivKey)
 	if err != nil {
 		return nil, accounts.Account{}, err
 	}
@@ -296,83 +293,72 @@ func storeNewABKey(ks keyStore,abBaseAddr common.ABaddress,AprivKey *ecdsa.Priva
 	return key, a, err
 }
 
-func ABkeyFileName(keyAddr common.ABaddress) string {
+func ABkeyFileName(keyAddr common.SubAddress) string {
 	ts := time.Now().UTC()
 	return fmt.Sprintf("UTC--%s--%s", toISO8601(ts), hex.EncodeToString(keyAddr[:]))
 }
 
-// newABKey generate ABaccount Key
-func newABKey(abBaseAddr common.ABaddress,AprivKey *ecdsa.PrivateKey) (*Key, error) {
-	A, B, err := GeneratePKPairFromSubAddress(abBaseAddr[:])
+// newSubKey generate subAccount private Key
+func newSubKey(committeePub string, AprivKey *ecdsa.PrivateKey) (*Key, error) {
+	committeePubkey := crypto.ToECDSAPub(common.FromHex(committeePub))
+
+	_, s, err := crypto.GenerateSubPubKey(committeePubkey, AprivKey)
 	if err != nil {
 		return nil, err
 	}
 
-	PKPairStr := hexutil.PKPair2HexSlice(A, B)
-	SKOTA,s, err := crypto.GenerateABKey(PKPairStr[0], PKPairStr[1], PKPairStr[2], PKPairStr[3],AprivKey)
+	A := common.ToHex(crypto.FromECDSAPub(&AprivKey.PublicKey))
+	log.Info("newSubAccount infomation", "A", A)
+
+	//HSstring := strings.Replace(strings.Join(HS, ""), "0x", "", -1)
+	//
+	//rawHS, err := hexutil.Decode("0x" + HSstring)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//
+	//rawHSaddr, err := SubAddrFromUncompressedRawBytes(rawHS)
+	//if err != nil || rawHSaddr == nil {
+	//	return nil, err
+	//}
+
+	hString, err := ComputeSubKey(AprivKey, s, committeePubkey)
 	if err != nil {
 		return nil, err
 	}
-
-	otaStr := strings.Replace(strings.Join(SKOTA, ""), "0x", "", -1)
-
-	raw, err := hexutil.Decode("0x" + otaStr)
-	if err != nil {
-		return nil, err
-	}
-
-	abRawADDR, err := ABaddrFromUncompressedRawBytes(raw)
-	if err != nil || abRawADDR == nil {
-		return nil, err
-	}
-
-	// transform AB account key result to string
-	pk, err := ComputeABKeys(SKOTA[0], SKOTA[1],PKPairStr[2], PKPairStr[3],AprivKey,s)
-	if err != nil {
-		return nil, err
-	}
-	if len(pk) != 4 || len(pk[0]) == 0 || len(pk[1]) == 0 || len(pk[2]) == 0 {
-		return nil, err
-	}
-	otaPriv := pk[2]
-
-	privateKeyECDSA, err := crypto.HexToECDSA(otaPriv[2:])
+	h, err := crypto.HexToECDSA(hString[2:])
 	if err != nil {
 		return nil, err
 	}
 
 	var addr common.Address
-	pubkey := crypto.FromECDSAPub(&privateKeyECDSA.PublicKey)
+	addr = crypto.PubkeyToAddress(h.PublicKey)
 
-	//caculate the address for replaced pub
-	copy(addr[:], crypto.Keccak256(pubkey[1:])[12:])
-	return newABKeyFromECDSA(privateKeyECDSA,s,addr), nil
+	return newSubKeyFromECDSA(h, s, AprivKey, addr), nil
 }
 
-// ComputeABKeys genetate public key and private key of AB account
-func ComputeABKeys(AX, AY, BX, BY string,PrivateKey *ecdsa.PrivateKey, s *ecdsa.PrivateKey) ([]string, error) {
-	pub1, priv1, priv2, err := crypto.GenerteABPrivateKey(PrivateKey, s, AX, AY, BX, BY)
-	pub1X := hexutil.Encode(common.LeftPadBytes(pub1.X.Bytes(), 32))
-	pub1Y := hexutil.Encode(common.LeftPadBytes(pub1.Y.Bytes(), 32))
-	priv1D := hexutil.Encode(common.LeftPadBytes(priv1.D.Bytes(), 32))
-	priv2D := hexutil.Encode(common.LeftPadBytes(priv2.D.Bytes(), 32))
-	return []string{pub1X, pub1Y, priv1D, priv2D}, err
+// ComputeSubKey genetate public key and private key of AB account
+func ComputeSubKey(aPrivKey *ecdsa.PrivateKey, s *ecdsa.PrivateKey, CommitteePub *ecdsa.PublicKey) (string, error) {
+	hPriv, err := crypto.GenerateHpriv(aPrivKey, s, CommitteePub)
+	priv1D := hexutil.Encode(common.LeftPadBytes(hPriv.D.Bytes(), 32))
+	return priv1D, err
 }
 
-// newABKeyFromECDSA assign private key and address to Key
-func newABKeyFromECDSA(sk1 *ecdsa.PrivateKey,sk2 *ecdsa.PrivateKey,addr common.Address) *Key {
+// newSubKeyFromECDSA assign private key and address to Key
+func newSubKeyFromECDSA(sk1 *ecdsa.PrivateKey, sk2 *ecdsa.PrivateKey, sk3 *ecdsa.PrivateKey, addr common.Address) *Key {
 	id := uuid.NewRandom()
 	key := &Key{
 		Id:          id,
-		Address:	addr,
+		Address:     addr,
 		PrivateKey:  sk1,
 		PrivateKey2: sk2,
 	}
-	updateABaddress(key)
+	updateSubAddress(key, sk3)
 	return key
 }
 
-func updateABaddress(k *Key) {
-	k.ABaddress = *GenerateABaddressFromPK(&k.PrivateKey.PublicKey, &k.PrivateKey2.PublicKey)
-	log.Info("newABaccount infomation","ABaddress",hexutil.Encode(k.ABaddress[:]))
+// update AS
+func updateSubAddress(k *Key, sk *ecdsa.PrivateKey) {
+	k.SubAddress = *GenerateABaddressFromPK(&sk.PublicKey, &k.PrivateKey2.PublicKey)
+	log.Info("newSubAccount infomation", "SubAddress", hexutil.Encode(k.SubAddress[:]))
 }

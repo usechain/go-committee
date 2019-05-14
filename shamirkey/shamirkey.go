@@ -41,7 +41,7 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 	//Check whether a real committee
 	MAX_COMMITTEEMAN_COUNT, err := ctr.ContractCallParsed(rpc, coinbase, "MAX_COMMITTEEMAN_COUNT")
 	if err != nil {
-		log.Error("read MAX_COMMITTEEMAN_COUNT failed",  err)
+		log.Error("read MAX_COMMITTEEMAN_COUNT failed",  "err",err)
 		return
 	}
 	log.Info("Init committee number", "MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT[0])
@@ -112,7 +112,7 @@ func ShamirKeySharesGenerate(id int, keypool *core.KeyPool) {
 	polyPublicKeys := sssa.ToECDSAPubArray(polynomials)
 
 	if !sssa.VerifyCreatedAndPolynomial(created, polyPublicKeys) {
-		log.Error("Fatal: verifying: ", err)
+		log.Error("Fatal: verifying: ", "err", err)
 		return
 	}
 

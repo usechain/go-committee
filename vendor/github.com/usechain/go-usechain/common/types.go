@@ -17,13 +17,17 @@
 package common
 
 import (
+	"crypto/sha256"
 	"encoding/hex"
+	"encoding/json"
 	"fmt"
 	"math"
 	"math/big"
 	"math/rand"
 	"reflect"
+	"time"
 
+	"github.com/usechain/go-usechain/common/base58"
 	"github.com/usechain/go-usechain/common/hexutil"
 	"github.com/usechain/go-usechain/crypto/sha3"
 )
@@ -31,12 +35,8 @@ import (
 const (
 	HashLength                          = 32
 	AddressLength                       = 20
-	ABaddressLength                     = 66
-	AuthenticationContractAddressString = "0xfffffffffffffffffffffffffffffffff0000001"
-	CreditABI                           = `[{"constant":false,"inputs":[{"name":"hashKey","type":"bytes32"},{"name":"_identity","type":"bytes"},{"name":"_issuer","type":"bytes"}],"name":"addNewIdentity","outputs":[{"name":"","type":"bool"}],"payable":true,"stateMutability":"payable","type":"function"},{"constant":false,"inputs":[{"name":"account","type":"address"}],"name":"addSigner","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"_publicKey","type":"string"},{"name":"_hashKey","type":"bytes32"},{"name":"_identity","type":"bytes"},{"name":"_issuer","type":"bytes"}],"name":"register","outputs":[{"name":"","type":"bool"}],"payable":true,"stateMutability":"payable","type":"function"},{"constant":false,"inputs":[],"name":"renounceSigner","outputs":[],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"addr","type":"address"}],"name":"verifyBase","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"constant":false,"inputs":[{"name":"addr","type":"address"},{"name":"hash","type":"bytes32"}],"name":"verifyHash","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"nonpayable","type":"function"},{"anonymous":false,"inputs":[{"indexed":true,"name":"addr","type":"address"},{"indexed":true,"name":"hash","type":"bytes32"}],"name":"NewUserRegister","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"addr","type":"address"},{"indexed":true,"name":"hash","type":"bytes32"}],"name":"NewIdentity","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"account","type":"address"}],"name":"SignerAdded","type":"event"},{"anonymous":false,"inputs":[{"indexed":true,"name":"account","type":"address"}],"name":"SignerRemoved","type":"event"},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"getBaseData","outputs":[{"name":"","type":"bytes32"},{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"hash","type":"bytes32"}],"name":"getHashData","outputs":[{"name":"","type":"bytes"},{"name":"","type":"bytes"},{"name":"","type":"bool"},{"name":"","type":"string"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"getUnregisterHash","outputs":[{"name":"","type":"bytes32[]"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[],"name":"getUnregisterLen","outputs":[{"name":"","type":"uint256"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"addr","type":"address"}],"name":"getUserInfo","outputs":[{"name":"","type":"address"},{"name":"","type":"string"},{"name":"","type":"bytes32"},{"name":"","type":"bytes32[]"},{"name":"","type":"bool[]"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"account","type":"address"}],"name":"isSigner","outputs":[{"name":"","type":"bool"}],"payable":false,"stateMutability":"view","type":"function"},{"constant":true,"inputs":[{"name":"","type":"uint256"}],"name":"unregister","outputs":[{"name":"","type":"bytes32"}],"payable":false,"stateMutability":"view","type":"function"}]`
-	UsechainABI                         = "[{\"constant\":true,\"inputs\":[],\"name\":\"unConfirmedAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"isCommittee\",\"outputs\":[{\"name\":\"added\",\"type\":\"bool\"},{\"name\":\"execution\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"contractVersion\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"contractName\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"CommitteePublicKey\",\"outputs\":[{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"confirmedSubAddress\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"confirmedMainAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"confirmedMainAddress\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"MAX_COMMITTEEMAN_COUNT\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"checkOneTimeAddrAdded\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"requirement\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_addr\",\"type\":\"address\"}],\"name\":\"checkAddrConfirmed\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"},{\"name\":\"\",\"type\":\"address\"}],\"name\":\"CommitteeConfirmations\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"unConfirmedAddress\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"CertificateAddr\",\"outputs\":[{\"name\":\"added\",\"type\":\"bool\"},{\"name\":\"confirmed\",\"type\":\"bool\"},{\"name\":\"addressType\",\"type\":\"uint8\"},{\"name\":\"ringSig\",\"type\":\"string\"},{\"name\":\"pubSKey\",\"type\":\"string\"},{\"name\":\"publicKeyMirror\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"address\"}],\"name\":\"OneTimeAddr\",\"outputs\":[{\"name\":\"confirmed\",\"type\":\"bool\"},{\"name\":\"caSign\",\"type\":\"string\"},{\"name\":\"certMsg\",\"type\":\"string\"},{\"name\":\"pubKey\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"CertToAddress\",\"outputs\":[{\"name\":\"confirmed\",\"type\":\"bool\"},{\"name\":\"toAddress\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"OneTimeAddrConfirmed\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"CMMTTEEs\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"OneTimeAddrConfirmedLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"confirmedSubAddressLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"certIDCount\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"Committeeman\",\"type\":\"address\"}],\"name\":\"CommitteemanAddition\",\"type\":\"event\"},{\"inputs\":[{\"name\":\"_createrPubKey\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"constructor\"},{\"constant\":false,\"inputs\":[{\"name\":\"_newPending\",\"type\":\"address\"}],\"name\":\"removeCommittee\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"sender\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"submitIndex\",\"type\":\"uint256\"},{\"indexed\":true,\"name\":\"added\",\"type\":\"bool\"}],\"name\":\"Submission\",\"type\":\"event\"},{\"constant\":false,\"inputs\":[{\"name\":\"_certID\",\"type\":\"uint256\"},{\"name\":\"_confirm\",\"type\":\"bool\"}],\"name\":\"confirmCert\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_addressType\",\"type\":\"uint8\"},{\"name\":\"_ringSig\",\"type\":\"string\"},{\"name\":\"_pub_S_Key\",\"type\":\"string\"},{\"name\":\"_publicKeyMirror\",\"type\":\"string\"}],\"name\":\"summitCert\",\"outputs\":[{\"name\":\"_certID\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_ringSig\",\"type\":\"string\"},{\"name\":\"_pub_S_Key\",\"type\":\"string\"},{\"name\":\"_publicKeyMirror\",\"type\":\"string\"}],\"name\":\"storeSubUserCert\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_pubkey\",\"type\":\"string\"},{\"name\":\"_sign\",\"type\":\"string\"},{\"name\":\"_CA\",\"type\":\"string\"}],\"name\":\"storeOneTimeAddress\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_ringSig\",\"type\":\"string\"},{\"name\":\"_pub_S_Key\",\"type\":\"string\"},{\"name\":\"_publicKeyMirror\",\"type\":\"string\"}],\"name\":\"storeMainUserCert\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"submitIndex\",\"type\":\"uint256\"}],\"name\":\"ExecutionFailure\",\"type\":\"event\"},{\"constant\":false,\"inputs\":[{\"name\":\"_newPending\",\"type\":\"address\"},{\"name\":\"_publicKey\",\"type\":\"string\"}],\"name\":\"addCommittee\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"Committeeman\",\"type\":\"address\"}],\"name\":\"CommitteemanRemoval\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"confirmed\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"submitIndex\",\"type\":\"uint256\"},{\"indexed\":true,\"name\":\"added\",\"type\":\"bool\"}],\"name\":\"Confirmation\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"submitIndex\",\"type\":\"uint256\"}],\"name\":\"Execution\",\"type\":\"event\"}]"
-	MainAddress                         = 1
-	SubAddress                          = 2
+	Base58AddressLength                 = 35
+	SubAddressLength                    = 66
 )
 
 var (
@@ -56,6 +56,16 @@ func BytesToHash(b []byte) Hash {
 	h.SetBytes(b)
 	return h
 }
+
+// IsHexAddress verifies whether a string can represent a valid hex-encoded
+// Ethereum address or not.
+func IsHexHash(s string) bool {
+	if hasHexPrefix(s) {
+		s = s[2:]
+	}
+	return len(s) == 2*HashLength && isHex(s)
+}
+
 func StringToHash(s string) Hash { return BytesToHash([]byte(s)) }
 func BigToHash(b *big.Int) Hash  { return BytesToHash(b.Bytes()) }
 func HexToHash(s string) Hash    { return BytesToHash(FromHex(s)) }
@@ -76,6 +86,22 @@ func (h Hash) TerminalString() string {
 // doing full logging into a file.
 func (h Hash) String() string {
 	return h.Hex()
+}
+
+// Increase hash number in Hex
+func (h Hash) IncreaseHex(n *big.Int) Hash {
+	x := h.Big()
+	y := n
+	x.Add(x, y)
+	return BigToHash(x)
+}
+
+// Decrease hash number in Hex
+func (h Hash) DecreaseHex(n *big.Int) Hash {
+	x := h.Big()
+	y := n
+	x.Sub(x, y)
+	return BigToHash(x)
 }
 
 // Format implements fmt.Formatter, forcing the byte slice to be formatted as is,
@@ -144,11 +170,19 @@ func (h UnprefixedHash) MarshalText() ([]byte, error) {
 	return []byte(hex.EncodeToString(h[:])), nil
 }
 
+// return the string data that has been added to the num
+func IncreaseHexByNum(indexKeyHash []byte, num int64) string {
+	x := new(big.Int).SetBytes(indexKeyHash)
+	y := big.NewInt(num)
+	x.Add(x, y)
+	return hex.EncodeToString(x.Bytes())
+}
+
 // Address represents the 20 byte address of an Ethereum account.
 type Address [AddressLength]byte
 
-// ABaddress represents the 66 byte address of an Usechain sub account
-type ABaddress [ABaddressLength]byte
+// SubAddress represents the 66 byte address of an Usechain sub account
+type SubAddress [SubAddressLength]byte
 
 func BytesToAddress(b []byte) Address {
 	var a Address
@@ -169,7 +203,7 @@ func IsHexAddress(s string) bool {
 }
 
 // Get the string representation of the underlying address
-func (a Address) Str() string   { return string(a[:]) }
+func (a Address) Str() string   { return AddressToBase58Address(a).String() }
 func (a Address) Bytes() []byte { return a[:] }
 func (a Address) Big() *big.Int { return new(big.Int).SetBytes(a[:]) }
 func (a Address) Hash() Hash    { return BytesToHash(a[:]) }
@@ -204,7 +238,7 @@ func (a Address) String() string {
 // Format implements fmt.Formatter, forcing the byte slice to be formatted as is,
 // without going through the stringer interface used for logging.
 func (a Address) Format(s fmt.State, c rune) {
-	fmt.Fprintf(s, "%"+string(c), a[:])
+	fmt.Fprintf(s, "%"+string(c), a.Str())
 }
 
 // Sets the address to the value of b. If b is larger than len(a) it will panic
@@ -227,17 +261,21 @@ func (a *Address) Set(other Address) {
 
 // MarshalText returns the hex representation of a.
 func (a Address) MarshalText() ([]byte, error) {
-	return hexutil.Bytes(a[:]).MarshalText()
+	return []byte(AddressToBase58Address(a).String()), nil
 }
 
 // UnmarshalText parses a hash in hex syntax.
 func (a *Address) UnmarshalText(input []byte) error {
-	return hexutil.UnmarshalFixedText("Address", input, a[:])
+	address := Base58AddressToAddress(BytesToBase58Address(input))
+	*a = address
+	return nil
 }
 
 // UnmarshalJSON parses a hash in hex syntax.
 func (a *Address) UnmarshalJSON(input []byte) error {
-	return hexutil.UnmarshalFixedJSON(addressT, input, a[:])
+	address := Base58AddressToAddress(BytesToBase58Address(input[1:1+Base58AddressLength]))
+	*a = address
+	return nil
 }
 
 // UnprefixedHash allows marshaling an Address without 0x prefix.
@@ -245,10 +283,79 @@ type UnprefixedAddress Address
 
 // UnmarshalText decodes the address from hex. The 0x prefix is optional.
 func (a *UnprefixedAddress) UnmarshalText(input []byte) error {
-	return hexutil.UnmarshalFixedUnprefixedText("UnprefixedAddress", input, a[:])
+	address := Base58AddressToAddress(BytesToBase58Address(input))
+	*a = UnprefixedAddress(address)
+	return nil
 }
 
 // MarshalText encodes the address as hex.
 func (a UnprefixedAddress) MarshalText() ([]byte, error) {
-	return []byte(hex.EncodeToString(a[:])), nil
+	return []byte(AddressToBase58Address(Address(a)).String()), nil
+}
+
+// Base58Address represents the 35 byte address of an Usechain account
+type Base58Address [Base58AddressLength]byte
+
+func (a *Base58Address) SetBytes(b []byte) {
+	if len(b) > len(a) {
+		b = b[len(b)-Base58AddressLength:]
+	}
+	copy(a[Base58AddressLength-len(b):], b)
+}
+
+func BytesToBase58Address(b []byte) Base58Address {
+	var a Base58Address
+	a.SetBytes(b)
+	return a
+}
+
+func (a Base58Address) Bytes() []byte { return a[:] }
+func (a Base58Address) String() string   { return string(a[:]) }
+func StringToBase58Address(s string) Base58Address { return BytesToBase58Address([]byte(s)) }
+
+func AddressToBase58Address(a Address) Base58Address {
+	versionBuf := append(base58.PREFIX_ADDR, a.Bytes()...)
+
+	firstSHA := sha256.Sum256(versionBuf)
+	secondSHA := sha256.Sum256(firstSHA[:])
+	checksum := secondSHA[:4]
+
+	allBuf := append(versionBuf, checksum...)
+	address := base58.Base58Encode(allBuf)
+	return BytesToBase58Address(address)
+}
+
+func Base58AddressToAddress(a Base58Address) Address {
+	buf := base58.Base58Decode(a.Bytes())
+	return BytesToAddress(buf[2:2+AddressLength])
+}
+
+type Lock struct {
+	Permission    uint16   `json:"permission"`
+	TimeLimit     string   `json:"timelimit"`
+	LockedBalance *big.Int `json:"lockedbalance"`
+}
+
+func (l Lock) Marshal() ([]byte, error) {
+	return json.Marshal(l)
+}
+
+func (l Lock) String() string {
+	b, _ := l.Marshal()
+	return string(b[:])
+}
+
+func (l Lock) Expired() bool {
+	if l.Permission == 0 {
+		return true
+	}
+	if len(l.TimeLimit) == 0 {
+		return false
+	}
+	now := time.Now()
+	expire, err := time.Parse(time.RFC3339, l.TimeLimit)
+	if err != nil {
+		return false // lock forever if time can not parse correctly
+	}
+	return expire.Before(now)
 }

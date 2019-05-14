@@ -468,22 +468,23 @@ func (s *Service) reportLatency(conn *websocket.Conn) error {
 
 // blockStats is the information to report about individual blocks.
 type blockStats struct {
-	Number     *big.Int       `json:"number"`
-	Hash       common.Hash    `json:"hash"`
-	ParentHash common.Hash    `json:"parentHash"`
-	Timestamp  *big.Int       `json:"timestamp"`
-	Miner      common.Address `json:"miner"`
-	IsCheckPoint   *big.Int		  `json:"isCheckPoint"`
-	MinerQrSignature string   `json:"minerQrSignature"`
-	DifficultyLevel   *big.Int		  `json:"difficultyLevel"`
-	GasUsed    uint64         `json:"gasUsed"`
-	GasLimit   uint64         `json:"gasLimit"`
-	Diff       string         `json:"difficulty"`
-	TotalDiff  string         `json:"totalDifficulty"`
-	Txs        []txStats      `json:"transactions"`
-	TxHash     common.Hash    `json:"transactionsRoot"`
-	Root       common.Hash    `json:"stateRoot"`
-	Uncles     uncleStats     `json:"uncles"`
+	Number           *big.Int       `json:"number"`
+	Hash             common.Hash    `json:"hash"`
+	ParentHash       common.Hash    `json:"parentHash"`
+	Timestamp        *big.Int       `json:"timestamp"`
+	Miner            common.Address `json:"miner"`
+	IsCheckPoint     *big.Int       `json:"isCheckPoint"`
+	MinerQrSignature []byte         `json:"minerQrSignature"`
+	DifficultyLevel  *big.Int       `json:"difficultyLevel"`
+	PrimaryMiner     common.Address `json:"primaryMiner"`
+	GasUsed          uint64         `json:"gasUsed"`
+	GasLimit         uint64         `json:"gasLimit"`
+	Diff             string         `json:"difficulty"`
+	TotalDiff        string         `json:"totalDifficulty"`
+	Txs              []txStats      `json:"transactions"`
+	TxHash           common.Hash    `json:"transactionsRoot"`
+	Root             common.Hash    `json:"stateRoot"`
+	Uncles           uncleStats     `json:"uncles"`
 }
 
 // txStats is the information to report about individual transactions.
@@ -557,22 +558,23 @@ func (s *Service) assembleBlockStats(block *types.Block) *blockStats {
 	author, _ := s.engine.Author(header)
 
 	return &blockStats{
-		Number:     header.Number,
-		Hash:       header.Hash(),
-		ParentHash: header.ParentHash,
-		Timestamp:  header.Time,
-		Miner:      author,
-		IsCheckPoint:	header.IsCheckPoint,
-		MinerQrSignature: string((header.MinerQrSignature)),
-		DifficultyLevel:	header.DifficultyLevel,
-		GasUsed:    header.GasUsed,
-		GasLimit:   header.GasLimit,
-		Diff:       header.Difficulty.String(),
-		TotalDiff:  td.String(),
-		Txs:        txs,
-		TxHash:     header.TxHash,
-		Root:       header.Root,
-		Uncles:     uncles,
+		Number:           header.Number,
+		Hash:             header.Hash(),
+		ParentHash:       header.ParentHash,
+		Timestamp:        header.Time,
+		Miner:            author,
+		IsCheckPoint:     header.IsCheckPoint,
+		MinerQrSignature: header.MinerQrSignature,
+		DifficultyLevel:  header.DifficultyLevel,
+		PrimaryMiner:     header.PrimaryMiner,
+		GasUsed:          header.GasUsed,
+		GasLimit:         header.GasLimit,
+		Diff:             header.Difficulty.String(),
+		TotalDiff:        td.String(),
+		Txs:              txs,
+		TxHash:           header.TxHash,
+		Root:             header.Root,
+		Uncles:           uncles,
 	}
 }
 
@@ -672,7 +674,6 @@ type nodeStats struct {
 	Active   bool `json:"active"`
 	Syncing  bool `json:"syncing"`
 	Mining   bool `json:"mining"`
-	Hashrate int  `json:"hashrate"`
 	Peers    int  `json:"peers"`
 	GasPrice int  `json:"gasPrice"`
 	Uptime   int  `json:"uptime"`
@@ -684,13 +685,11 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 	// Gather the syncing and mining infos from the local miner instance
 	var (
 		mining   bool
-		hashrate int
 		syncing  bool
 		gasprice int
 	)
 	if s.eth != nil {
 		mining = s.eth.Miner().Mining()
-		hashrate = int(s.eth.Miner().HashRate())
 
 		sync := s.eth.Downloader().Progress()
 		syncing = s.eth.BlockChain().CurrentHeader().Number.Uint64() >= sync.HighestBlock
@@ -709,7 +708,6 @@ func (s *Service) reportStats(conn *websocket.Conn) error {
 		"stats": &nodeStats{
 			Active:   true,
 			Mining:   mining,
-			Hashrate: hashrate,
 			Peers:    s.server.PeerCount(),
 			GasPrice: gasprice,
 			Syncing:  syncing,

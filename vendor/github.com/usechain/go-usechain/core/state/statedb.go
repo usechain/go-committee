@@ -26,6 +26,7 @@ import (
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/rlp"
 	"github.com/usechain/go-usechain/trie"
+	"math"
 	"math/big"
 	"sort"
 	"sync"
@@ -205,7 +206,6 @@ func (self *StateDB) GetNonce(addr common.Address) uint64 {
 	if stateObject != nil {
 		return stateObject.Nonce()
 	}
-
 	return 0
 }
 
@@ -239,6 +239,65 @@ func (self *StateDB) AddCertifications(addr common.Address, certifications uint6
 		currentCert := stateObject.Certifications()
 		stateObject.SetCertifications(currentCert + certifications)
 	}
+}
+
+func (self *StateDB) GetReviewPoints(addr common.Address) *big.Int {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.ReviewPoints()
+	}
+	return big.NewInt(-1)
+}
+
+// reviewPoints could be negative
+func (self *StateDB) AddReviewPoints(addr common.Address, reviewPoints *big.Int) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		currentReview := stateObject.ReviewPoints()
+		stateObject.SetReviewPoints(big.NewInt(0).Add(currentReview, reviewPoints))
+	}
+}
+
+func (self *StateDB) GetRewardPoints(addr common.Address) *big.Int {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.RewardPoints()
+	}
+	return big.NewInt(-1)
+}
+
+// rewardPoints could be negative
+func (self *StateDB) AddRewardPoints(addr common.Address, rewardPoints *big.Int) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		currentReward := stateObject.RewardPoints()
+		stateObject.SetRewardPoints(big.NewInt(0).Add(currentReward, rewardPoints))
+	}
+}
+
+func (self *StateDB) IsCertificationVerified(addr common.Address, flag uint64) bool {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		currentCert := stateObject.Certifications()
+		n := new(big.Int).Rsh(big.NewInt(int64(currentCert)), uint(math.Log2(float64(flag)))) // n >> log2flag e.g if flag=4 then n >> 2
+		return new(big.Int).Mod(n, big.NewInt(2)).Cmp(big.NewInt(1)) == 0                     // if n%2 == 1 then flag is verified
+	}
+	return false
+}
+
+func (self *StateDB) SetAccountLock(addr common.Address, lock *common.Lock) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetAccountLock(lock)
+	}
+}
+
+func (self *StateDB) GetAccountLock(addr common.Address) *common.Lock {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.Lock()
+	}
+	return new(common.Lock)
 }
 
 func (self *StateDB) GetCode(addr common.Address) []byte {
@@ -322,6 +381,11 @@ func (self *StateDB) AddBalance(addr common.Address, amount *big.Int) {
 func (self *StateDB) SubBalance(addr common.Address, amount *big.Int) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
+
+		// lock := stateObject.Lock()
+		// if lock.Permission == 1 && lock.LockedBalance.Cmp(new(big.Int).Sub(stateObject.Balance(), amount)) <= 0 {
+		// }
+
 		stateObject.SubBalance(amount)
 	}
 }
@@ -464,6 +528,7 @@ func (self *StateDB) createObject(addr common.Address) (newobj, prev *stateObjec
 	newobj.setNonce(0) // sets the object to dirty
 	newobj.setTradePoints(0)
 	newobj.setCertifications(0)
+	newobj.setAccountLock(new(common.Lock))
 	if prev == nil {
 		self.journal = append(self.journal, createObjectChange{account: &addr})
 	} else {
