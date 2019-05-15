@@ -129,12 +129,13 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 	if err != nil {
 		return "", err
 	}
-	nonce, err := node.UseGetTransactionCount(coinbase, "pending")
+
+	coinbaseUM := common.AddressToBase58Address(common.HexToAddress(coinbase)).String()
+	
+	nonce, err := node.UseGetTransactionCount(coinbaseUM, "pending")
 	if err != nil {
 		log.Error("Get nonce failed", "error", err)
 	}
-
-	fmt.Println("===========", nonce)
 
 	if Nonce <= uint64(nonce) {
 		Nonce = uint64(nonce)
