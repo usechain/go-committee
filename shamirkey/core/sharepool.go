@@ -233,6 +233,8 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 		}
 
 		if subData, ok := self.encryptedSubSet[A]; ok {
+			var A11 string
+			var S11 string
 			data := strings.Split(subData, "+")
 			//Decryption
 			ct, err := hexutil.Decode(data[1])
@@ -260,8 +262,8 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 					}
 					self.VerifiedSubChan <- verifiedSub
 				} else {
-					A11 := common.ToHex(crypto.FromECDSAPub(A1))
-					S11 := common.ToHex(crypto.FromECDSAPub(S1))
+					A11 = common.ToHex(crypto.FromECDSAPub(A1))
+					S11 = common.ToHex(crypto.FromECDSAPub(S1))
 					log.Info("GeneratePKPairFromSubAddress", "A1", A11, "S1", S11)
 
 					// CHECK A11 is main account
@@ -286,18 +288,17 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 							Status: big.NewInt(4),
 						}
 						self.VerifiedSubChan <- verifiedSub
-					} else {
-						subdata := &SubData{
-							SubID: A,
-							H: data[0],
-							Amain: A11,
-							S: S11,
-						}
-						self.SubChan <- subdata
-						self.verifiedSubSet[A] = self.pendingSubSet[A]
 					}
 				}
 			}
+			subdata := &SubData{
+				SubID: A,
+				H: data[0],
+				Amain: A11,
+				S: S11,
+			}
+			self.SubChan <- subdata
+			self.verifiedSubSet[A] = self.pendingSubSet[A]
 			delete(self.shareSet,A)
 			delete(self.pendingSubSet, A)
 			delete(self.encryptedSubSet, A)
