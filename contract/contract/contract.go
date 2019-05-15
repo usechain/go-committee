@@ -134,6 +134,8 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 		log.Error("Get nonce failed", "error", err)
 	}
 
+	fmt.Println("===========", nonce)
+
 	if Nonce <= uint64(nonce) {
 		Nonce = uint64(nonce)
 	}
