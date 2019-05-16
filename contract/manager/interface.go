@@ -71,7 +71,6 @@ func ConfirmAndKeyUpload(config config.Usechain) {
 		return
 	}
 	log.Info("the confirmAndKeyUpload transaction", "Hash", res)
-
 }
 
 func UploadCommitteePublickey(config *config.Usechain, key *ecdsa.PublicKey) {

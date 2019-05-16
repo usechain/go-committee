@@ -143,12 +143,13 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 
 	tx := types.NewTransaction(Nonce, common.HexToAddress(crt.Address), nil, 10000000, big.NewInt(20000000000), bytes)
 	ac, err := account.CommitteeAccount(common.HexToAddress(coinbase), ks)
+
 	if err != nil {
 		fmt.Println("account:", err)
 	}
 
 	// TODO NETWORK id
-	signedTx, err := ks.SignTx(ac, tx, big.NewInt(2))
+	signedTx, err := ks.SignTx(ac, tx, big.NewInt(1))
 	if err != nil {
 		log.Error("Sign the committee Msg failed, Please unlock the verifier account", "err", err)
 		return "", err
