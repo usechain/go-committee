@@ -389,7 +389,7 @@ func SendSubShared(usechain *config.Usechain, node, A string,S string) {
 	pubkey.X, pubkey.Y = crypto.S256().ScalarMult(publicA.X, publicA.Y, priv.D.Bytes())   //bsA=[bs]B
 	pubkey.Curve = crypto.S256()
 
-	m := msg.PackVerifyShare(S, pubkey, usechain.UserProfile.CommitteeID)
+	m := msg.PackVerifySubShare(S, pubkey, usechain.UserProfile.CommitteeID)
 	wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(node)))
 }
 
