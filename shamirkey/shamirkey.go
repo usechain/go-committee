@@ -174,11 +174,15 @@ func ShamirKeySharesListening(usechain *config.Usechain, pool *core.SharePool, k
 			if verify.IsAccountVerifier(addrID, core.CommitteeMax, usechain.UserProfile.CommitteeID) {
 				pool.SaveAccountSharedCache(addrID, bsA, m.Sender)
 			}
-		case msg.VerifyShareSubMsg:
+		case msg.VerifySubASMsg:
 			A1, S1 := msg.UnpackVerifyShare(m.Data)
-			log.Debug("Received a new shared for sub account verifying", "S", S1)
-			nodelist := core.CommitteeNodeList
-			creditNew.SendSubShared(usechain, nodelist[m.Sender],A1, S1)
+			log.Debug("Received a new AS for sub account verifying", "S", S1)
+			log.Info("Send committee to verify subaccount", "Sub-S1", S1, "committeeID", m.Sender)
+			creditNew.SendSubShared(usechain, core.CommitteeNodeList[m.Sender], A1, S1)
+		case msg.VerifySubShareMsg:
+			addrID, bsA := msg.UnpackVerifyShare(m.Data)
+			log.Debug("Received a new shared for account verifying", "S", addrID)
+			pool.SaveAccountSharedCache(addrID, bsA, m.Sender)
 		}
 	}
 }

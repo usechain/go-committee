@@ -36,7 +36,8 @@ const (
 	Keyshare						  // value --> 1  Keyshare
 	NewCommitteeLogInMsg 			  // value --> 2  New committee connected the network, request for shares
 	VerifyShareMsg					  // value --> 3  The signed share for account verifying
-	VerifyShareSubMsg				  // value --> 4  The signed sub share for account verifying
+	VerifySubASMsg				  	  // value --> 4  The signed sub AS for account verifying
+	VerifySubShareMsg    			// value --> 5  The signed sub share for account verifying
 	Unknown
 )
 
@@ -142,7 +143,7 @@ func PackVerifyShare(addrIDstring string, bsA *ecdsa.PublicKey, id int) []byte{
 }
 
 //Pack the Verify Shares Message
-func PackVerifySub(A string, S string, id int) []byte{
+func PackVerifySubAS(A string, S string, id int) []byte{
 	d := make([][]byte, 2)
 	d[0] = []byte(A)
 	d[1] = []byte(S)
@@ -150,7 +151,28 @@ func PackVerifySub(A string, S string, id int) []byte{
 	msg := 	Msg {
 		ID: time.Now().Nanosecond(),
 		Sender: id,
-		Type: VerifyShareSubMsg,
+		Type: VerifySubASMsg,
+		Data: d,
+	}
+	b, _ := json.Marshal(msg)
+	return b
+}
+
+//Pack the Verify Shares Message
+func PackVerifySubShare(addrIDstring string, bsA *ecdsa.PublicKey, id int) []byte{
+	var s string
+	s += utils.ToBase64(big.NewInt(int64(id + 1)))
+	s += utils.ToBase64(bsA.X)
+	s += utils.ToBase64(bsA.Y)
+
+	d := make([][]byte, 2)
+	d[0] = []byte(addrIDstring)
+	d[1] = []byte(s)
+
+	msg := 	Msg {
+		ID: time.Now().Nanosecond(),
+		Sender: id,
+		Type: VerifySubShareMsg,
 		Data: d,
 	}
 	b, _ := json.Marshal(msg)

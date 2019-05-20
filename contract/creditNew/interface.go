@@ -368,7 +368,7 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 
 func SendSubPublickey(usechain *config.Usechain, nodelist []string, A string, S string, max int) {
 
-	m := msg.PackVerifySub(A, S, usechain.UserProfile.CommitteeID)
+	m := msg.PackVerifySubAS(A, S, usechain.UserProfile.CommitteeID)
 
 	///TODO: ID can be self
 	for _, id := range verify.AccountSubVerifier(S, max) {
