@@ -145,7 +145,7 @@ func SendRequestShares(senderid int) {
 }
 
 // Listening the network msg
-func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool, keypool *core.KeyPool) {
+func ShamirKeySharesListening(usechain *config.Usechain, pool *core.SharePool, keypool *core.KeyPool) {
 	log.Debug("Listening...")
 	var input []byte
 
@@ -171,15 +171,14 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 		case msg.VerifyShareMsg:
 			addrID, bsA := msg.UnpackVerifyShare(m.Data)
 			log.Debug("Received a new shared for account verifying", "A", addrID)
-			if verify.IsAccountVerifier(addrID, core.CommitteeMax, p.CommitteeID) {
+			if verify.IsAccountVerifier(addrID, core.CommitteeMax, usechain.UserProfile.CommitteeID) {
 				pool.SaveAccountSharedCache(addrID, bsA, m.Sender)
 			}
 		case msg.VerifyShareSubMsg:
-			addrID, bsA := msg.UnpackVerifyShare(m.Data)
-			log.Debug("Received a new shared for account verifying", "A", addrID)
-			if verify.IsSubAccountVerifier(addrID, core.CommitteeMax, p.CommitteeID) {
-				pool.SaveAccountSharedCache(addrID, bsA, m.Sender)
-			}
+			A1, S1 := msg.UnpackVerifyShare(m.Data)
+			log.Debug("Received a new shared for sub account verifying", "S", S1)
+			nodelist := core.CommitteeNodeList
+			creditNew.SendSubShared(usechain, nodelist[m.Sender],A1, S1)
 		}
 	}
 }

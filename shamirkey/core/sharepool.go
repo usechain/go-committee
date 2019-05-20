@@ -144,7 +144,7 @@ func (self *SharePool) SaveSubData(S string, H string, subID string) {
 	self.encryptedHSet[S] =  append(self.encryptedHSet[S], H)
 	self.encryptedHSet[S] = append(self.encryptedHSet[S], S)
 	self.encryptedHSet[S] = append(self.encryptedHSet[S], subID)
-	fmt.Println("encryptedHSet======", self.encryptedHSet)
+	log.Info("encryptedHSet", "encryptedHSet", self.encryptedHSet)
 }
 
 func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
@@ -157,7 +157,7 @@ func (self *SharePool) CheckSharedMsg(usechain *config.Usechain, requires int) {
 	defer self.mu.Unlock()
 	for A, shares := range self.shareSet {
 		//check whether got enough shares
-		if len(shares) < 5 {
+		if len(shares) < 3 {
 			time.Sleep(time.Second)
 			continue
 		}

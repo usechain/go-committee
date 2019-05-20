@@ -131,7 +131,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				hashKeyString := hexutil.Encode(hashKey[:])
 				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
 				if err != nil {
-					log.Error("CheckUserRegisterCert failed", err)
+					log.Error("CheckUserRegisterCert failed", "err", err)
 					return
 				}
 
@@ -144,8 +144,12 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				log.Debug("Get public key", "key", string(pubkey))
 
 				decrypedAndVerifyData := strings.Join([]string{hashKeyString, id.Data, string(pubkey)},"+")
-				sendPublickeyShared(usechain, nodelist, string(pubkey), max, addrIDstring)
-				pool.SaveEncryptedData(addrIDstring, common.Hash(hashKey), decrypedAndVerifyData)
+				sendIdSet := sendPublickeyShared(usechain, nodelist, string(pubkey), max, addrIDstring)
+				for _, id := range sendIdSet {
+					if  id == usechain.UserProfile.CommitteeID {
+						pool.SaveEncryptedData(addrIDstring, common.Hash(hashKey), decrypedAndVerifyData)
+					}
+				}
 			}
 		}
 	}
@@ -199,17 +203,21 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				continue
 			} else {
 				subSet.Add(string(addrSubIDstring))
-				sendSubPublickeyShared(usechain, nodelist, string(subPubkey), max, addrSubIDstring)
-				subVerifyData := strings.Join([]string{string(subPubkey),encryptedAS}, "+")
-				pool.SaveEncryptedSub(addrSubIDstring, subVerifyData)
+				sendIdSet := sendPublickeyShared(usechain, nodelist, string(subPubkey), max, addrSubIDstring)
+				for _, id := range sendIdSet {
+					if  id == usechain.UserProfile.CommitteeID {
+						subVerifyData := strings.Join([]string{string(subPubkey),encryptedAS}, "+")
+						pool.SaveEncryptedSub(addrSubIDstring, subVerifyData)
+					}
+				}
 			}
 		}
 	}
 
 	processSub := func(subdata *core.SubData) {
-		sendSubShared(usechain, nodelist, subdata.Amain, subdata.S, max)
 		// many A with one HS
 		pool.SaveSubData(subdata.S, subdata.H, subdata.SubID)
+		SendSubPublickey(usechain, nodelist, subdata.Amain, subdata.S, max)
 	}
 
 	processScanUnEncrypted := func() {
@@ -269,7 +277,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				if err != nil {
 					log.Error("GeneratePKPairFromSubAddress error", err)
 				}
-				sendSubShared(usechain, nodelist, A11, S11, max)
+				SendSubPublickey(usechain, nodelist, A11, S11, max)
 				// many A with one HS
 				pool.SaveSubData(S11, subPubkey, addrSubIDstring)
 			}
@@ -335,11 +343,11 @@ func ConfirmSubAccount(usechain *config.Usechain, sub core.VerifiedSub) error {
 	return nil
 }
 
-func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int, addrID string) {
+func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int, addrID string) ([]int){
 	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
 	if priv == nil {
 		log.Error("No valid private share")
-		return
+		return nil
 	}
 	publicA := crypto.ToECDSAPub(common.FromHex(A))		//A
 
@@ -350,34 +358,26 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 	m := msg.PackVerifyShare(addrID, pubkey, usechain.UserProfile.CommitteeID)
 
 	///TODO: ID can be self
-	for _, id := range verify.AccountVerifier(addrID, max) {
+	idset := verify.AccountVerifier(addrID, max)
+	for _, id := range idset {
 		log.Info("Send message to Verifier", "id", id, "node", nodelist[id])
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
+	return idset
 }
 
-func sendSubPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int, addrSubIDstring string) {
-	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
-	if priv == nil {
-		log.Error("No valid private share")
-		return
-	}
-	publicA := crypto.ToECDSAPub(common.FromHex(A))		//A
+func SendSubPublickey(usechain *config.Usechain, nodelist []string, A string, S string, max int) {
 
-	pubkey := new(ecdsa.PublicKey)
-	pubkey.X, pubkey.Y = crypto.S256().ScalarMult(publicA.X, publicA.Y, priv.D.Bytes())   //bsA=[bs]B
-	pubkey.Curve = crypto.S256()
-
-	m := msg.PackVerifySubShare(addrSubIDstring, pubkey, usechain.UserProfile.CommitteeID)
+	m := msg.PackVerifySub(A, S, usechain.UserProfile.CommitteeID)
 
 	///TODO: ID can be self
-	for _, id := range verify.AccountSubVerifier(addrSubIDstring, max) {
+	for _, id := range verify.AccountSubVerifier(S, max) {
 		log.Info("Send sub account message to Verifier", "id", id, "node", nodelist[id])
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
 	}
 }
 
-func sendSubShared(usechain *config.Usechain, nodelist []string, A string,S string, max int) {
+func SendSubShared(usechain *config.Usechain, node, A string,S string) {
 	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
 	if priv == nil {
 		log.Error("No valid private share")
@@ -390,12 +390,7 @@ func sendSubShared(usechain *config.Usechain, nodelist []string, A string,S stri
 	pubkey.Curve = crypto.S256()
 
 	m := msg.PackVerifyShare(S, pubkey, usechain.UserProfile.CommitteeID)
-
-	///TODO: ID can be self
-	for _, id := range verify.AccountVerifier(S, max) {
-		log.Info("Send main accunt of the sub account to Verifier", "id", id, "node", nodelist[id])
-		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
-	}
+	wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(node)))
 }
 
 func CheckUserRegisterCert(cert []byte, idhex string, fpr string) error {

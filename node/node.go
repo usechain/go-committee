@@ -83,7 +83,7 @@ func Initial() {
 func run() {
 	// Listening the network msg
 	go func(){
-		shamirkey.ShamirKeySharesListening(GlobalConfig.UserProfile, cache, keypool)
+		shamirkey.ShamirKeySharesListening(&GlobalConfig, cache, keypool)
 	}()
 
 	// Process handle

@@ -142,15 +142,10 @@ func PackVerifyShare(addrIDstring string, bsA *ecdsa.PublicKey, id int) []byte{
 }
 
 //Pack the Verify Shares Message
-func PackVerifySubShare(A string, bsA *ecdsa.PublicKey, id int) []byte{
-	var s string
-	s += utils.ToBase64(big.NewInt(int64(id + 1)))
-	s += utils.ToBase64(bsA.X)
-	s += utils.ToBase64(bsA.Y)
-
+func PackVerifySub(A string, S string, id int) []byte{
 	d := make([][]byte, 2)
 	d[0] = []byte(A)
-	d[1] = []byte(s)
+	d[1] = []byte(S)
 
 	msg := 	Msg {
 		ID: time.Now().Nanosecond(),
