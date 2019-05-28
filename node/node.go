@@ -59,7 +59,7 @@ func Initial() {
 		utils.Fatalf("Please fill in correct committee address in conf")
 	} else {
 		GlobalConfig.Kstore = account.DefaultKeystore(*wnode.ArgMoonet)
-		signer, err := account.CommitteeAccount(common.HexToAddress(addr), GlobalConfig.Kstore)
+		signer, err := account.CommitteeAccount(common.UmAddressToAddress(addr), GlobalConfig.Kstore)
 		if err != nil {
 			utils.Fatalf("Please import committee corresponding keystore file")
 		}
