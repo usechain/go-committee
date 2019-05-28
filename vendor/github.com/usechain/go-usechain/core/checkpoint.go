@@ -13,34 +13,17 @@
 //
 // You should have received a copy of the GNU Lesser General Public License
 // along with the go-usechain library. If not, see <http://www.gnu.org/licenses/>.
-package crypto
+
+package core
 
 import (
-	"testing"
+	"github.com/usechain/go-usechain/common"
 )
 
-func TestRSAKeypair(t *testing.T) {
-	err := GenerateRSAKeypair()
-	if err != nil {
-		t.Fatal("Generate RSA key pair error")
+func GetIndexForVote(t1 int64, t2 int64) uint64 {
+	index := uint64(0)
+	if t1 > t2 {
+		index = uint64(t1-t2) / common.VoteInterval
 	}
-}
-
-func TestRSA_Sign(t *testing.T) {
-	message := "0x21a7325a75492db1ee86c1d2d22984b83f6082e5"
-	sig, _ := RSA_Sign(message)
-
-	res := RSA_Verify(message, sig)
-	if res != true {
-		t.Fatal("RSA sign message error")
-	}
-}
-
-func TestRSA_V(t *testing.T) {
-	message := "21a7325a75492db1ee86c1d2d22984b83f6082e5"
-	sig, _ := RSA_Sign(message)
-	res := RSA_Verify(message, sig)
-	if res != true {
-		t.Fatal("RSA signature not correct")
-	}
+	return index
 }

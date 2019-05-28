@@ -129,10 +129,9 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 	if err != nil {
 		return "", err
 	}
-
-	coinbaseUM := common.AddressToBase58Address(common.HexToAddress(coinbase)).String()
+	//coinbaseUM := common.AddressToBase58Address(common.HexToAddress(coinbase)).String()
 	
-	nonce, err := node.UseGetTransactionCount(coinbaseUM, "pending")
+	nonce, err := node.UseGetTransactionCount(coinbase, "pending")
 	if err != nil {
 		log.Error("Get nonce failed", "error", err)
 	}
@@ -141,15 +140,14 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 		Nonce = uint64(nonce)
 	}
 
-	tx := types.NewTransaction(Nonce, common.HexToAddress(crt.Address), nil, 10000000, big.NewInt(20000000000), bytes)
+	tx := types.NewTransaction(Nonce, common.UmAddressToAddress(crt.Address), nil, 10000000, big.NewInt(20000000000), bytes)
 	ac, err := account.CommitteeAccount(common.HexToAddress(coinbase), ks)
-
 	if err != nil {
 		fmt.Println("account:", err)
 	}
 
 	// TODO NETWORK id
-	signedTx, err := ks.SignTx(ac, tx, big.NewInt(2))
+	signedTx, err := ks.SignTx(ac, tx, big.NewInt(1))
 	if err != nil {
 		log.Error("Sign the committee Msg failed, Please unlock the verifier account", "err", err)
 		return "", err

@@ -17,14 +17,10 @@
 package types
 
 import (
-	"fmt"
-	"io"
 	"container/heap"
 	"encoding/json"
 	"errors"
-	"math/big"
-	"strings"
-	"sync/atomic"
+	"fmt"
 	"github.com/usechain/go-usechain/accounts/abi"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/common/hexutil"
@@ -32,6 +28,10 @@ import (
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/rlp"
+	"io"
+	"math/big"
+	"strings"
+	"sync/atomic"
 )
 
 //go:generate gencodec -type txdata -field-override txdataMarshaling -out gen_tx_json.go
@@ -249,8 +249,8 @@ func (tx *Transaction) GetVerifiedAddress() (common.Address, bool) {
 		inputData = append(inputData, param)
 	}
 
-	status := inputData[2].(uint)
-	if status != 3 {
+	status := inputData[2].(*big.Int)
+	if status.Int64() != 3 {
 		return common.Address{}, false
 	}
 	addr := inputData[3].(common.Address)

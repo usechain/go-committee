@@ -55,7 +55,7 @@ func Initial() {
 
 	//Check the committee account format && legality
 	addr := GlobalConfig.UserProfile.Address
-	if addr == "" || !common.IsHexAddress(addr) {
+	if addr == ""  {
 		utils.Fatalf("Please fill in correct committee address in conf")
 	} else {
 		GlobalConfig.Kstore = account.DefaultKeystore(*wnode.ArgMoonet)

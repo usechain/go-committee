@@ -202,6 +202,13 @@ func (rpc *UseRPC) UseIsMiner(address, block string) (bool, error) {
 	return response == 1, err
 }
 
+// UseIsPunishedMiner returns true if the coinbase is a punished miner
+func (rpc *UseRPC) UseIsPunishedMiner(address, block string) (bool, error) {
+	var response int
+	err := rpc.call("eth_isPunishedMiner", &response, address, block)
+	return response == 1, err
+}
+
 func (rpc *UseRPC) UnlockAccount(address, pass string) (bool, error) {
 	var res bool
 	err := rpc.call("personal_unlockAccount", &res, address, pass, 0)
@@ -434,15 +441,12 @@ func (rpc *UseRPC) UseSendTransaction(transaction T) (string, error) {
 	return hash, err
 }
 
-func (rpc *UseRPC) SendCreditRegisterTransaction(transaction T) (string, error) {
+func (rpc *UseRPC) SendCreditRegisterTransaction(transaction T, enc bool) (string, error) {
 	var hash string
 
-	err := rpc.call("eth_sendCreditRegisterTransaction", &hash, transaction)
+	err := rpc.call("eth_sendCreditRegisterTransaction", &hash, transaction, enc)
 	return hash, err
 }
-
-
-
 
 // UseSendRawTransaction creates new message call transaction or a contract creation for signed transactions.
 func (rpc *UseRPC) UseSendRawTransaction(data string) (string, error) {

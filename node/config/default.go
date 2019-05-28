@@ -25,7 +25,6 @@ import (
 	"github.com/usechain/go-committee/contract/contract"
 	"github.com/usechain/go-committee/utils"
 	"github.com/usechain/go-usechain/log"
-	"github.com/usechain/go-usechain/common"
 )
 
 // Usechain implements the Usechain Committee full node service.
@@ -152,14 +151,16 @@ func ReadProfile() (*CommittteeProfile, error) {
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
-	addr := common.StringToBase58Address(crt.Address)
-	crt.Address = common.Base58AddressToAddress(addr).String()
+	//addr := common.StringToBase58Address(crt.Address)
+	//crt.Address = common.Base58AddressToAddress(addr).String()
 	return crt, err
 }
 
 func UpdateProfile(profile *CommittteeProfile) (error) {
-	Addr := common.HexToAddress(profile.Address)
-	profile.Address = common.AddressToBase58Address(Addr).String()
+	//if 	common.IsHexAddress(profile.Address) {
+	//	Addr := common.HexToAddress(profile.Address)
+	//	profile.Address = common.AddressToBase58Address(Addr).String()
+	//}
 	b, err := json.Marshal(*profile)
 	if err != nil {
 		fmt.Println("error:", err)

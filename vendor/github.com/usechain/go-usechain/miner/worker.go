@@ -510,7 +510,7 @@ func (self *worker) commitNewWork() {
 	committeeCnt := self.chain.GetCommitteeCount()
 	var pending map[common.Address]types.Transactions
 	if header.IsCheckPoint.Cmp(common.Big1) == 0 && atomic.LoadInt32(&self.mining) == 1 {
-		pending, err = self.eth.TxPool().GetValidPbft(blockNumber.Uint64()-1, common.GetIndexForVote(time.Now().Unix(), parent.Time().Int64()))
+		pending, err = self.eth.TxPool().GetValidPbft(blockNumber.Uint64()-1, core.GetIndexForVote(time.Now().Unix(), parent.Time().Int64()))
 		gen, targetHash, _ := canGenBlockInCheckPoint(pending, committeeCnt)
 		if !gen {
 		DONE2:
@@ -593,7 +593,7 @@ func (self *worker) checkBlockInterval(parent *types.Block, tstamp int64) bool {
 	return true
 }
 
-func (self *worker) headPrepare(parent *types.Block, tstamp int64) (header *types.Header, blcokNumber *big.Int) {
+func (self *worker) headPrepare(parent *types.Block, tstamp int64) (header *types.Header, blockNumber *big.Int) {
 	num := parent.Number()
 	header = &types.Header{
 		ParentHash: parent.Hash(),
@@ -604,13 +604,13 @@ func (self *worker) headPrepare(parent *types.Block, tstamp int64) (header *type
 		Time:       big.NewInt(tstamp),
 		Difficulty: big.NewInt(1),
 	}
-	blcokNumber = header.Number
+	blockNumber = header.Number
 	if header.Number.Int64() >= common.VoteSlotForGenesis && int64(new(big.Int).Mod(header.Number, common.VoteSlot).Cmp(common.Big0)) == 0 {
 		header.IsCheckPoint = big.NewInt(1)
 	} else {
 		header.IsCheckPoint = big.NewInt(0)
 	}
-	return header, blcokNumber
+	return header, blockNumber
 }
 
 func (self *worker) checkIsVaildMiner(preCoinbase common.Address, preQr []byte, blockNumber *big.Int, totalMinerNum *big.Int, n *big.Int) (bool, int64, int64) {
@@ -651,13 +651,17 @@ func (self *worker) isMiner(totalMinerNum *big.Int, blockNumber *big.Int) bool {
 	isMiner, flag := minerlist.IsMiner(self.current.state, self.coinbase, totalMinerNum, blockNumber)
 	if !isMiner {
 		if flag == 1 {
-			if minerlist.GetMisconducts(self.current.state, self.coinbase).Int64() < common.MisconductLimitsLevel3 {
-				log.Error("Coinbase is being punished, Mining will commence after the penalty period")
+			misconducts := minerlist.GetMisconducts(self.current.state, self.coinbase).Int64()
+			if misconducts < common.MisconductLimitsLevel3 {
+				resetBlockNumber := minerlist.GetPunishHeight(self.current.state, self.coinbase).Int64() + common.PenaltyBlockTime
+				log.Warn("Coinbase's misconducts: ", "misconducts", misconducts)
+				log.Warn("Coinbase is being punished, Mining will commence after: ", "blockNumber", resetBlockNumber)
 			} else {
-				log.Error("Coinbase has been permanently punished, Mining is forbidden")
+				log.Warn("Coinbase's misconducts: ", "misconducts", misconducts)
+				log.Warn("Coinbase has been permanently punished, Mining is forbidden")
 			}
 		} else {
-			log.Error("Coinbase needs to register as a miner, Please try 'miner.stop();use.minerRegister({from:use.coinbase});miner.start()'")
+			log.Warn("Coinbase needs to register as a miner, Please try 'miner.stop();use.minerRegister({from:use.coinbase});miner.start()'")
 		}
 		return false
 	}
