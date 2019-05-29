@@ -21,5 +21,6 @@ var (
 	CommitteeRequires = 3
 	CommitteeNodeList []string      // All committer
 	VerifierRequires = 2
+	VerifierSubRequires = 5
 )
 

@@ -23,10 +23,9 @@ import (
 	"github.com/usechain/go-committee/shamirkey/msg"
 	"github.com/usechain/go-usechain/common/hexutil"
 	"github.com/usechain/go-usechain/node"
+	"strconv"
+	"encoding/hex"
 )
-
-const creditAddr = "0xfffffffffffffffffffffffffffffffff0000001"
-const creditABI = "[{\"constant\":true,\"inputs\":[],\"name\":\"CommitteeAddr\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"getHashData\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes\"},{\"name\":\"\",\"type\":\"bytes\"},{\"name\":\"\",\"type\":\"bool\"},{\"name\":\"\",\"type\":\"string\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnregisterHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getUserInfo\",\"outputs\":[{\"name\":\"\",\"type\":\"address\"},{\"name\":\"\",\"type\":\"string\"},{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bytes32[]\"},{\"name\":\"\",\"type\":\"bool[]\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"isMainAccount\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"hashKey\",\"type\":\"bytes32\"},{\"name\":\"_identity\",\"type\":\"bytes\"},{\"name\":\"_issuer\",\"type\":\"bytes\"}],\"name\":\"addNewIdentity\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"isSigner\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"name\":\"unregister\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"verifyBase\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"_user\",\"type\":\"address\"}],\"name\":\"test\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"},{\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"verifyHash\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[{\"name\":\"addr\",\"type\":\"address\"}],\"name\":\"getBaseData\",\"outputs\":[{\"name\":\"\",\"type\":\"bytes32\"},{\"name\":\"\",\"type\":\"bool\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":true,\"inputs\":[],\"name\":\"getUnregisterLen\",\"outputs\":[{\"name\":\"\",\"type\":\"uint256\"}],\"payable\":false,\"stateMutability\":\"view\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[],\"name\":\"renounceSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"account\",\"type\":\"address\"}],\"name\":\"addSigner\",\"outputs\":[],\"payable\":false,\"stateMutability\":\"nonpayable\",\"type\":\"function\"},{\"constant\":false,\"inputs\":[{\"name\":\"_publicKey\",\"type\":\"string\"},{\"name\":\"_hashKey\",\"type\":\"bytes32\"},{\"name\":\"_identity\",\"type\":\"bytes\"},{\"name\":\"_issuer\",\"type\":\"bytes\"}],\"name\":\"register\",\"outputs\":[{\"name\":\"\",\"type\":\"bool\"}],\"payable\":true,\"stateMutability\":\"payable\",\"type\":\"function\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewUserRegister\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"addr\",\"type\":\"address\"},{\"indexed\":true,\"name\":\"hash\",\"type\":\"bytes32\"}],\"name\":\"NewIdentity\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerAdded\",\"type\":\"event\"},{\"anonymous\":false,\"inputs\":[{\"indexed\":true,\"name\":\"account\",\"type\":\"address\"}],\"name\":\"SignerRemoved\",\"type\":\"event\"}]"
 
 //The struct of the identity
 type Identity struct {
@@ -44,7 +43,7 @@ type Issuer struct {
 	Cert   string      `json:"cert"`
 	Alg    string      `json:"alg"`
 	UseId  string      `json:"useid"`
-	PubKey *big.Int `json:"pubkey"`
+	PubKey interface{} `json:"-"`
 	Cdate  string      `json:"cdate"`
 	Edate  string      `json:"edate"`
 }
@@ -53,52 +52,57 @@ type Issuer struct {
 func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, nodelist []string, max int) {
 	rpc := usechain.NodeRPC
 	coinbase := usechain.UserProfile.Address
-	certHashAddtoSet := NewSet()
-	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
+	creditCTR, _ := contract.New("credit contract", "", contract.CreditAddr, contract.CreditABI)
+	registerIDSet := NewSet()
 	ethQuitCh := make(chan struct{}, 1)
-
+	subSet := NewSet()
 	processScan := func() {
-		// get unconfirmed address number
-		UnregisterLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnregisterLen")
+		// get unconfirmed main address number
+		getUnConfirmedMainAddressLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnConfirmedMainAddrLen")
 		if err != nil {
 			log.Error("contract call", "err", err)
 			return
 		}
-		if UnregisterLen == contract.ContractZero || UnregisterLen == contract.ContractNull{
+		if getUnConfirmedMainAddressLen == contract.ContractZero || getUnConfirmedMainAddressLen == contract.ContractNull{
 			return
 		}
-		unconfirmedCount, _ := big.NewInt(0).SetString(UnregisterLen[2:], 16)
+		unconfirmedCount, _ := big.NewInt(0).SetString(getUnConfirmedMainAddressLen[2:], 16)
 
 		for i := int64(0); i < unconfirmedCount.Int64(); i++ {
 			// get unconfirmed address index
-			unregister, err := creditCTR.ContractCallParsed(rpc, coinbase, "unregister", big.NewInt(i))
-			if err != nil && len(unregister) == 0 {
+			UnConfirmedMainAddrID, err := creditCTR.ContractCall(rpc, coinbase, "UnConfirmedMainAddrID", big.NewInt(i))
+			if err != nil && len(UnConfirmedMainAddrID) == 0 {
 				log.Debug("Read unconfirmed address failed", "err", err)
 				return
 			}
-			certHash, ok := (unregister[0]).([32]uint8)
-			if !ok {
-				log.Error("It's not ok for", "type", reflect.TypeOf(unregister[0]))
+
+			mainID , _ := big.NewInt(0).SetString(UnConfirmedMainAddrID[2:], 16)
+			UnConfirmedMainAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "RegisterIDtoAddr", big.NewInt(mainID.Int64()))
+			if err != nil && len(UnConfirmedMainAddrID) == 0 {
+				log.Debug("Read UnConfirmedMainAddrID failed", "err", err)
 				return
 			}
 
-			certHashToString := hexutil.Encode(certHash[:])
-			if certHashAddtoSet.Has(certHashToString) {
+			mainAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "MainAccount", UnConfirmedMainAddr[1])
+			if err != nil {
+				log.Debug("Read unconfirmed mainAccount failed", "err", err)
+				return
+			}
+
+			addrIDstring := strconv.Itoa(int(mainID.Int64()))
+			if registerIDSet.Has(addrIDstring) {
 				continue
 			} else {
-				certHashAddtoSet.Add(certHashToString)
+				registerIDSet.Add(addrIDstring)
 				// get encrypted string based on address as index
-				log.Info("Receive certHash", "certHash", certHashToString)
-				getHashData, err := creditCTR.ContractCallParsed(rpc, coinbase, "getHashData", certHash)
-				if err != nil {
-					log.Error("ContractCallParsed failed", "err", err)
-					return
-				}
+				log.Info("Receive UnConfirmedMainAddr", "UnConfirmedMainAddr", mainAccount[0].(common.Address))
+
+				hashKey := mainAccount[1].([32]uint8)
 
 				// read identity info
-				identity, ok := (getHashData[0]).([]byte)
+				identity, ok := (mainAccount[3]).([]byte)
 				if !ok {
-					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[0]))
+					log.Error("It's not ok for", "type", reflect.TypeOf(mainAccount[3]))
 					return
 				}
 				log.Debug("Get identity string", "string", string(identity))
@@ -111,9 +115,9 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				}
 
 				// read issuer info
-				issuer, ok := (getHashData[1]).([]byte)
+				issuer, ok := (mainAccount[4]).([]byte)
 				if !ok {
-					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[1]))
+					log.Error("It's not ok for", "type", reflect.TypeOf(mainAccount[4]))
 					return
 				}
 				log.Debug("get issuer string", "string", string(issuer))
@@ -124,26 +128,175 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 					log.Debug( "Unmarshal failed: " , "err", err )
 				}
 
-				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), certHashToString, id.Fpr)
-				if err != nil {
-					log.Error("CheckUserRegisterCert failed", err)
-					return
-				}
-
 				// read requestor's public key
-				pubkey, ok := (getHashData[3]).(string)
+				pubkey, ok := (mainAccount[5]).(string)
 				if !ok {
-					log.Error("It's not ok for", "type", reflect.TypeOf(getHashData[3]))
+					log.Error("It's not ok for", "type", reflect.TypeOf(mainAccount[5]))
 					return
 				}
 				log.Debug("Get public key", "key", string(pubkey))
+				pubstringTObyte, _ := hexutil.Decode(string(pubkey))
+				pubxxx := crypto.ToECDSAPub(pubstringTObyte)
 
-				decrypedAndVerifyData := strings.Join([]string{certHashToString, id.Data},"+")
-				sendPublickeyShared(usechain, nodelist, string(pubkey), max)
-				pool.SaveEncryptedData(pubkey, common.Hash(certHash), decrypedAndVerifyData)
+
+				hashKeyString := hexutil.Encode(hashKey[:])
+				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
+				if err != nil {
+					verifiedData := core.VerifiedMain{
+						Addr: crypto.PubkeyToAddress(*pubxxx),
+						RegisterID: big.NewInt(mainID.Int64()),
+						Hashkey: common.HexToHash(hashKeyString),
+						Status: big.NewInt(4),
+					}
+
+					//Confirm stat with the contract
+					pool.AddVerifiedMain(verifiedData)
+					
+					log.Error("CheckUserRegisterCert failed", "err", err)
+					return
+				}
+
+				decrypedAndVerifyData := strings.Join([]string{hashKeyString, id.Data, string(pubkey)},"+")
+				sendIdSet := sendPublickeyShared(usechain, nodelist, string(pubkey), max, addrIDstring)
+				for _, id := range sendIdSet {
+					if  id == usechain.UserProfile.CommitteeID {
+						pool.SaveEncryptedData(addrIDstring, common.Hash(hashKey), decrypedAndVerifyData)
+					}
+				}
 			}
 		}
 	}
+
+	processSubScan := func() {
+		// get unconfirmed sub address number
+		UnConfirmedSubLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnConfirmedSubAddrLen")
+		if err != nil {
+			log.Error("contract call", "err", err)
+			return
+		}
+
+		if UnConfirmedSubLen == contract.ContractZero || UnConfirmedSubLen == contract.ContractNull{
+			return
+		}
+		unconfirmedSub, _ := big.NewInt(0).SetString(UnConfirmedSubLen[2:], 16)
+
+		for i := int64(0); i < unconfirmedSub.Int64(); i++ {
+			// get unconfirmed address
+			UnConfirmedSubAddrID, err := creditCTR.ContractCall(rpc, coinbase, "UnConfirmedSubAddrID", big.NewInt(i))
+			if err != nil {
+				log.Debug("Read UnConfirmedSubAddrID failed", "err", err)
+				return
+			}
+			subID, _ := big.NewInt(0).SetString(UnConfirmedSubAddrID[2:], 16)
+			SubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "RegisterIDtoAddr", big.NewInt(subID.Int64()))
+			if err != nil {
+				log.Debug("Read unconfirmed sub address failed", "err", err)
+				return
+			}
+
+			SubAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "SubAccount", SubAddr[1])
+			if err != nil {
+				log.Debug("Read unconfirmed SubAccount failed", "err", err)
+				return
+			}
+
+			subPubkey, ok := (SubAccount[2]).(string)
+			if !ok {
+				log.Error("It's not ok for", "type", reflect.TypeOf(SubAccount[2]))
+				return
+			}
+			encryptedAS, ok := (SubAccount[3]).(string)
+			if !ok {
+				log.Error("It's not ok for", "type", reflect.TypeOf(SubAccount[3]))
+				return
+			}
+
+			addrSubIDstring := strconv.Itoa(int(subID.Int64()))
+			if subSet.Has(string(addrSubIDstring)) {
+				continue
+			} else {
+				subSet.Add(string(addrSubIDstring))
+				sendIdSet := sendPublickeyShared(usechain, nodelist, string(subPubkey), max, addrSubIDstring)
+				for _, id := range sendIdSet {
+					if  id == usechain.UserProfile.CommitteeID {
+						subVerifyData := strings.Join([]string{string(subPubkey),encryptedAS}, "+")
+						pool.SaveEncryptedSub(addrSubIDstring, subVerifyData)
+					}
+				}
+			}
+		}
+	}
+
+	processSub := func(subdata *core.SubData) {
+		// many A with one HS
+		pool.SaveSubData(subdata.S, subdata.H, subdata.SubID)
+		SendSubPublickey(usechain, nodelist, subdata.Amain, subdata.S, max)
+	}
+
+	processScanUnEncrypted := func() {
+		// get unconfirmed sub address number
+		unEncryptedSubLen, err := creditCTR.ContractCall(rpc, coinbase, "getUnEncryptedSubAddrLen")
+		if err != nil {
+			log.Error("contract call", "err", err)
+			return
+		}
+
+		if unEncryptedSubLen == contract.ContractZero || unEncryptedSubLen == contract.ContractNull{
+			return
+		}
+		unconfirmedSub, _ := big.NewInt(0).SetString(unEncryptedSubLen[2:], 16)
+
+		for i := int64(0); i < unconfirmedSub.Int64(); i++ {
+			// get unconfirmed address
+			UnEncryptedSubAddrID, err := creditCTR.ContractCall(rpc, coinbase, "UnEncryptedSubAddrID", big.NewInt(i))
+			if err != nil {
+				log.Debug("Read UnEncryptedSubAddrID failed", "err", err)
+				return
+			}
+			subID, _ := big.NewInt(0).SetString(UnEncryptedSubAddrID[2:], 16)
+			SubAddr, err := creditCTR.ContractCallParsed(rpc, coinbase, "RegisterIDtoAddr", big.NewInt(subID.Int64()))
+			if err != nil {
+				log.Debug("Read unconfirmed sub address failed", "err", err)
+				return
+			}
+
+			SubAccount, err := creditCTR.ContractCallParsed(rpc, coinbase, "SubAccount", SubAddr[1])
+			if err != nil {
+				log.Debug("Read unconfirmed SubAccount failed", "err", err)
+				return
+			}
+
+			subPubkey, ok := (SubAccount[2]).(string)
+			if !ok {
+				log.Error("It's not ok for", "type", reflect.TypeOf(SubAccount[2]))
+				return
+			}
+
+			AS, ok := (SubAccount[3]).(string)
+			if !ok {
+				log.Error("It's not ok for", "type", reflect.TypeOf(SubAccount[3]))
+				return
+			}
+
+			addrSubIDstring := strconv.Itoa(int(subID.Int64()))
+			if subSet.Has(string(addrSubIDstring)) {
+				continue
+			} else {
+				subSet.Add(string(addrSubIDstring))
+				ASbyte, _ := hex.DecodeString(AS)
+				A1, S1, err := core.GeneratePKPairFromSubAddress(ASbyte)
+				A11 := common.ToHex(crypto.FromECDSAPub(A1))
+				S11 := common.ToHex(crypto.FromECDSAPub(S1))
+				if err != nil {
+					log.Error("GeneratePKPairFromSubAddress error", err)
+				}
+				SendSubPublickey(usechain, nodelist, A11, S11, max)
+				// many A with one HS
+				pool.SaveSubData(S11, subPubkey, addrSubIDstring)
+			}
+		}
+	}
+
 	loop := true
 	for loop {
 		select {
@@ -152,25 +305,31 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				fmt.Println("[SCAN CLOSED] ScanCreditSystemAccount thread exitCh!")
 				loop = false
 			}
+
+		case subdata := <- pool.SubChan:
+			processSub(subdata)
+
 		default:
 			processScan()
+			processSubScan()
+			processScanUnEncrypted()
 			time.Sleep(time.Second * 5)
 		}
 	}
 }
 
-func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, hash common.Hash) error {
+func ConfirmCreditSystemAccount(usechain *config.Usechain, mainData core.VerifiedMain) error {
 	rpc := usechain.NodeRPC
 	coinbase := usechain.UserProfile.Address
-	creditCTR, _ := contract.New("credit contract", "", creditAddr, creditABI)
+	creditCTR, _ := contract.New("credit contract", "", contract.CreditAddr, contract.CreditABI)
 
 	// verify hash
-	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", addr, hash)
-	log.Info("VerifyHash transaction", "hash", res)
+	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifyHash", mainData.RegisterID, mainData.Hashkey, mainData.Status,  mainData.Addr)
 	if err != nil {
 		log.Error("contract call", "err", err)
 		return err
 	}
+	log.Info("VerifyHash transaction", "hash", res)
 
 	if res == contract.ContractZero || res == contract.ContractNull {
 		return nil
@@ -178,7 +337,60 @@ func ConfirmCreditSystemAccount(usechain *config.Usechain, addr common.Address, 
 	return nil
 }
 
-func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int) {
+func ConfirmSubAccount(usechain *config.Usechain, sub core.VerifiedSub) error {
+	rpc := usechain.NodeRPC
+	coinbase := usechain.UserProfile.Address
+	creditCTR, _ := contract.New("credit contract", "", contract.CreditAddr, contract.CreditABI)
+
+	// verify hash
+	res, err := creditCTR.ContractTransaction(rpc, usechain.Kstore, coinbase, "verifySub", sub.RegisterID, sub.Status)
+	if err != nil {
+		log.Error("VerifySub transaction", "err", err)
+		return err
+	}
+	log.Info("VerifySub transaction", "hash", res)
+
+	if res == contract.ContractZero || res == contract.ContractNull {
+		return nil
+	}
+	return nil
+}
+
+func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int, addrID string) ([]int){
+	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
+	if priv == nil {
+		log.Error("No valid private share")
+		return nil
+	}
+	publicA := crypto.ToECDSAPub(common.FromHex(A))		//A
+
+	pubkey := new(ecdsa.PublicKey)
+	pubkey.X, pubkey.Y = crypto.S256().ScalarMult(publicA.X, publicA.Y, priv.D.Bytes())   //bsA=[bs]B
+	pubkey.Curve = crypto.S256()
+
+	m := msg.PackVerifyShare(addrID, pubkey, usechain.UserProfile.CommitteeID)
+
+	///TODO: ID can be self
+	idset := verify.AccountVerifier(addrID, max)
+	for _, id := range idset {
+		log.Info("Send message to Verifier", "id", id, "node", nodelist[id])
+		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
+	}
+	return idset
+}
+
+func SendSubPublickey(usechain *config.Usechain, nodelist []string, A string, S string, max int) {
+
+	m := msg.PackVerifySubAS(A, S, usechain.UserProfile.CommitteeID)
+
+	///TODO: ID can be self
+	for _, id := range verify.AccountSubVerifier(S, max) {
+		log.Info("Send sub account message to Verifier", "id", id, "node", nodelist[id])
+		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
+	}
+}
+
+func SendSubShared(usechain *config.Usechain, node, A string,S string) {
 	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
 	if priv == nil {
 		log.Error("No valid private share")
@@ -190,13 +402,8 @@ func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string,
 	pubkey.X, pubkey.Y = crypto.S256().ScalarMult(publicA.X, publicA.Y, priv.D.Bytes())   //bsA=[bs]B
 	pubkey.Curve = crypto.S256()
 
-	m := msg.PackVerifyShare(A, pubkey, usechain.UserProfile.CommitteeID)
-
-	///TODO: ID can be self
-	for _, id := range verify.AccountVerifier(A, max) {
-		log.Info("Send message to Verifier", "id", id, "node", nodelist[id])
-		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(nodelist[id])))
-	}
+	m := msg.PackVerifySubShare(S, pubkey, usechain.UserProfile.CommitteeID)
+	wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(node)))
 }
 
 func CheckUserRegisterCert(cert []byte, idhex string, fpr string) error {

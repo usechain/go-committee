@@ -17,14 +17,13 @@
 package core
 
 import (
+	"encoding/json"
 	"errors"
 	"math"
 	"math/big"
-	"os"
 
 	"github.com/usechain/go-usechain/common"
-	"github.com/usechain/go-usechain/contracts/authentication"
-	"github.com/usechain/go-usechain/core/state"
+	"github.com/usechain/go-usechain/common/hexutil"
 	"github.com/usechain/go-usechain/core/types"
 	"github.com/usechain/go-usechain/core/vm"
 	"github.com/usechain/go-usechain/log"
@@ -139,7 +138,7 @@ func ApplyMessage(evm *vm.EVM, msg Message, gp *GasPool) ([]byte, uint64, bool, 
 }
 
 func msgToTransaction(msg Message) *types.Transaction {
-	return types.NewTransaction(msg.Nonce(), *msg.To(), msg.Value(), msg.Gas(), msg.GasPrice(), msg.Data())
+	return types.NewSpecialTransaction(msg.Flag(), msg.Nonce(), *msg.To(), msg.Value(), msg.Gas(), msg.GasPrice(), msg.Data())
 }
 
 func (st *StateTransition) from() vm.AccountRef {
@@ -194,7 +193,7 @@ func (st *StateTransition) buyGas() error {
 	return nil
 }
 
-func (st *StateTransition) preCheck() error {
+func (st *StateTransition) preCheck() (err error) {
 	msg := st.msg
 	sender := st.from()
 
@@ -207,6 +206,7 @@ func (st *StateTransition) preCheck() error {
 			return ErrNonceTooLow
 		}
 	}
+
 	return st.buyGas()
 }
 
@@ -222,33 +222,6 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	homestead := st.evm.ChainConfig().IsHomestead(st.evm.BlockNumber)
 	contractCreation := msg.To() == nil
 
-	db, ok := (st.state).(*state.StateDB)
-	if !ok {
-		log.Error("vm state assert failed")
-		os.Exit(1)
-	}
-	// If it's transaction about authentication
-	if !contractCreation {
-		transactionFormat := msgToTransaction(msg)
-
-		if transactionFormat.IsAuthentication() {
-			err = transactionFormat.CheckCertificateSig(msg.From())
-			if err != nil {
-				return nil, 0, false, vm.ErrInvalidAuthenticationsig
-			}
-		} else if transactionFormat.IsMainAuthentication() {
-			err = authentication.CheckMultiAccountSig(db, transactionFormat, common.MainAddress, msg.From())
-			if err != nil {
-				return nil, 0, false, vm.ErrInvalidAuthenticationsig
-			}
-		} else if transactionFormat.IsSubAuthentication() {
-			err = authentication.CheckMultiAccountSig(db, transactionFormat, common.SubAddress, msg.From())
-			if err != nil {
-				return nil, 0, false, vm.ErrInvalidAuthenticationsig
-			}
-		}
-	}
-
 	// Pay intrinsic gas
 	gas, err := IntrinsicGas(st.data, contractCreation, homestead)
 	if err != nil {
@@ -256,7 +229,7 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	}
 
 	// If it's vote transaction
-	if msg.Flag() != 1 {
+	if msg.Flag() != uint8(types.TxPbft) {
 		if err = st.useGas(gas); err != nil {
 			return nil, 0, false, err
 		}
@@ -287,15 +260,76 @@ func (st *StateTransition) TransitionDb() (ret []byte, usedGas uint64, failed bo
 	}
 	st.refundGas()
 	st.state.AddBalance(st.evm.Coinbase, new(big.Int).Mul(new(big.Int).SetUint64(st.gasUsed()), st.gasPrice))
-	st.state.AddTradePoints(sender.Address(), 1)
 
+	// handle with different kinds of transactions
+	switch types.TxFlag(msg.Flag()) {
+	case types.TxNormal:
+		{
+			st.state.AddTradePoints(sender.Address(), 1)
+		}
+	case types.TxComment:
+		{
+			payload := msg.Data()
+			addr := common.BytesToAddress(payload[common.HashLength : common.HashLength+common.AddressLength])
+			evalPoint := hexutil.Encode(payload[common.HashLength+common.AddressLength:])
+			switch evalPoint {
+			case "0x01":
+				st.state.AddReviewPoints(addr, big.NewInt(1))
+			case "0xf1":
+				// review pointer can't be negative
+				if st.state.GetReviewPoints(addr).Cmp(big.NewInt(0)) == 1 {
+					st.state.AddReviewPoints(addr, big.NewInt(-1))
+				}
+			default:
+			}
+		}
+	case types.TxReward:
+		{
+			payload := msg.Data()
+			addr := common.BytesToAddress(payload[:common.AddressLength])
+			minus := hexutil.Encode(payload[common.AddressLength : common.AddressLength+1])
+			score := big.NewInt(0).SetBytes(payload[common.AddressLength+1:])
+
+			// Check whether punish or reward
+			if minus == "0x01" {
+				st.state.AddRewardPoints(addr, big.NewInt(0).Neg(score))
+			} else {
+				st.state.AddRewardPoints(addr, score)
+			}
+		}
+	case types.TxInherit:
+		{
+			payload := msg.Data()
+			score := big.NewInt(0).SetBytes(payload)
+
+			// Inherit main account certifications score
+			if score.Cmp(common.Big0) == 1 {
+				st.state.SetCertifications(*msg.To(), score.Uint64())
+			}
+		}
+	case types.TxLock:
+		{
+			l := new(common.Lock)
+			json.Unmarshal(st.data, l)
+			st.state.SetAccountLock(st.to().Address(), l)
+		}
+	}
+
+	// handle the certification score
 	if !contractCreation {
 		transactionFormat := msgToTransaction(msg)
-		if transactionFormat.IsCommitteeTransaction() {
-			addr := transactionFormat.GetVerifiedAddress()
+		if addr, isVerify := transactionFormat.GetVerifiedAddress(); isVerify {
 			// Points for the identity verification.
-			st.state.AddCertifications(addr, common.IDVerified)
+			if !st.state.IsCertificationVerified(addr, common.IDVerified) {
+				st.state.AddCertifications(addr, common.IDVerified)
+			}
 		}
+	}
+
+	// change the account lock
+	lock := st.state.GetAccountLock(st.from().Address())
+	if lock.Expired() {
+		st.state.SetAccountLock(st.from().Address(), new(common.Lock))
 	}
 
 	return ret, st.gasUsed(), vmerr != nil, err

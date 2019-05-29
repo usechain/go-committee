@@ -140,6 +140,7 @@ type CommittteeProfile struct {
 	PrivShares	string
 }
 
+
 func ReadProfile() (*CommittteeProfile, error) {
 	cfg, _ := os.Open(utils.DefaultDataDir() + "committee.json")
 	defer cfg.Close()
@@ -150,10 +151,16 @@ func ReadProfile() (*CommittteeProfile, error) {
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
+	//addr := common.StringToBase58Address(crt.Address)
+	//crt.Address = common.Base58AddressToAddress(addr).String()
 	return crt, err
 }
 
 func UpdateProfile(profile *CommittteeProfile) (error) {
+	//if 	common.IsHexAddress(profile.Address) {
+	//	Addr := common.HexToAddress(profile.Address)
+	//	profile.Address = common.AddressToBase58Address(Addr).String()
+	//}
 	b, err := json.Marshal(*profile)
 	if err != nil {
 		fmt.Println("error:", err)

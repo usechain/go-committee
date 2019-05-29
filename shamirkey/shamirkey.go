@@ -40,12 +40,12 @@ func InitShamirCommitteeNumber(config config.Usechain) {
 
 	//Check whether a real committee
 	MAX_COMMITTEEMAN_COUNT, err := ctr.ContractCallParsed(rpc, coinbase, "MAX_COMMITTEEMAN_COUNT")
-
-	log.Info("Init committee number", "MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT[0])
 	if err != nil {
-		log.Error("read MAX_COMMITTEEMAN_COUNT failed",  err)
+		log.Error("read MAX_COMMITTEEMAN_COUNT failed",  "err",err)
 		return
 	}
+	log.Info("Init committee number", "MAX_COMMITTEEMAN_COUNT", MAX_COMMITTEEMAN_COUNT[0])
+
 	max, ok := (MAX_COMMITTEEMAN_COUNT[0]).(*big.Int)
 	if !ok {
 		log.Error("It's not ok for", "type", reflect.TypeOf(MAX_COMMITTEEMAN_COUNT[0]))
@@ -112,7 +112,7 @@ func ShamirKeySharesGenerate(id int, keypool *core.KeyPool) {
 	polyPublicKeys := sssa.ToECDSAPubArray(polynomials)
 
 	if !sssa.VerifyCreatedAndPolynomial(created, polyPublicKeys) {
-		log.Error("Fatal: verifying: ", err)
+		log.Error("Fatal: verifying: ", "err", err)
 		return
 	}
 
@@ -145,7 +145,7 @@ func SendRequestShares(senderid int) {
 }
 
 // Listening the network msg
-func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool, keypool *core.KeyPool) {
+func ShamirKeySharesListening(usechain *config.Usechain, pool *core.SharePool, keypool *core.KeyPool) {
 	log.Debug("Listening...")
 	var input []byte
 
@@ -169,11 +169,20 @@ func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool,
 			log.Debug("Detected a new logged in committee")
 			ShamirSharesReponse(m.Sender, keypool)
 		case msg.VerifyShareMsg:
-			A, bsA := msg.UnpackVerifyShare(m.Data)
-			log.Debug("Received a new shared for account verifying", "A", A)
-			if verify.IsAccountVerifier(A, core.CommitteeMax, p.CommitteeID) {
-				pool.SaveAccountSharedCache(A, bsA, m.Sender)
+			addrID, bsA := msg.UnpackVerifyShare(m.Data)
+			log.Debug("Received a new shared for account verifying", "A", addrID)
+			if verify.IsAccountVerifier(addrID, core.CommitteeMax, usechain.UserProfile.CommitteeID) {
+				pool.SaveAccountSharedCache(addrID, bsA, m.Sender)
 			}
+		case msg.VerifySubASMsg:
+			A1, S1 := msg.UnpackVerifyShare(m.Data)
+			log.Debug("Received a new AS for sub account verifying", "S", S1)
+			log.Info("Send committee to verify subaccount", "Sub-S1", S1, "committeeID", m.Sender)
+			creditNew.SendSubShared(usechain, core.CommitteeNodeList[m.Sender], A1, S1)
+		case msg.VerifySubShareMsg:
+			addrID, bsA := msg.UnpackVerifyShare(m.Data)
+			log.Debug("Received a new shared for account verifying", "S", addrID)
+			pool.SaveAccountSharedCache(addrID, bsA, m.Sender)
 		}
 	}
 }
@@ -189,15 +198,16 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 	for {
 		select {
 		case v := <- pool.VerifiedChan:
-			pubkey := crypto.ToECDSAPub(common.FromHex(v))
-			log.Info("VerifiedChan pubkey", "pubkey", pubkey)
-
-			addr := crypto.PubkeyToAddress(*pubkey)
-			certHash := pool.GetVerifiedCertHash(v)
-
-			err := creditNew.ConfirmCreditSystemAccount(usechain, addr, certHash)
+			err := creditNew.ConfirmCreditSystemAccount(usechain, v)
 			if err == nil {
 				log.Info("ConfirmCreditSystemAccount", "result", "success")
+			}
+
+		case s := <- pool.VerifiedSubChan:
+			log.Info("Verifyed sub account", "ID", s.RegisterID)
+			err := creditNew.ConfirmSubAccount(usechain, s)
+			if err == nil {
+				log.Info("ConfirmSubAccount", "result", "success")
 			}
 		}
 	}

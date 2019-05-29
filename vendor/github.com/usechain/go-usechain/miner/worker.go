@@ -18,13 +18,13 @@ package miner
 
 import (
 	"fmt"
-	"github.com/usechain/go-usechain/crypto"
 	"math"
 	"math/big"
 	"sync"
 	"sync/atomic"
 	"time"
 
+	"bytes"
 	"github.com/usechain/go-usechain/accounts"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/consensus"
@@ -51,10 +51,8 @@ const (
 	chainHeadChanSize = 10
 	// chainSideChanSize is the size of channel listening to ChainSideEvent.
 	chainSideChanSize = 10
-
+	// chainRpowChanSize is the size of channel listening to rpow mining event
 	chainRpowChanSize = 10
-
-	genesisQrSignature = "8287dbe2b47bcc884dce4b9ea1a0dc76"
 )
 
 // Agent can register themself with the worker
@@ -63,7 +61,6 @@ type Agent interface {
 	SetReturnCh(chan<- *Result)
 	Stop()
 	Start()
-	GetHashRate() int64
 }
 
 // Work is the workers current environment and holds
@@ -419,118 +416,71 @@ func (self *worker) commitNewWork() {
 
 	tstart := time.Now()
 	parent := self.chain.CurrentBlock()
-
 	tstamp := tstart.Unix()
-	//if parent.Time().Cmp(new(big.Int).SetInt64(tstamp)) >= 0 {
-	//	tstamp = parent.Time().Int64() + 1
-	//}
+
 	// this will ensure we're not going off too far in the future
-	if now := time.Now().Unix(); tstamp > now+1 {
-		wait := time.Duration(tstamp-now) * time.Second
-		log.Info("Mining too far in the future", "wait", common.PrettyDuration(wait))
-		time.Sleep(wait)
-	}
+	checkMiningTooFar(tstamp)
 
-	if parent.Time().Cmp(new(big.Int).SetInt64(tstamp - int64(common.BlockInterval))) > 0 {
-		//log.Trace("Block time slot should be more than five seconds")
-		//time.Sleep(time.Duration(parent.Time().Int64() + int64(5) - tstamp) * time.Second)
-		//tstamp = parent.Time().Int64() + 5
-		DONE:
-			for{
-				select {
-				case <-self.chainRpowCh:
-				default:
-					break DONE
-				}
-			}
-			time.Sleep(10 * time.Millisecond)
-			self.chainRpowCh <- 1
-			return
+	// this will ensure block interval is legal
+	if !self.checkBlockInterval(parent, tstamp) {
+		return
 	}
+	// prepare head for mining
+	header, blockNumber := self.headPrepare(parent, tstamp)
 
-	num := parent.Number()
-	header := &types.Header{
-		ParentHash: parent.Hash(),
-		Number:     num.Add(num, common.Big1),
-		//GasLimit:   core.CalcGasLimit(parent),
-		GasLimit:	210000000,
-		Extra:      self.extra,
-		Time:       big.NewInt(tstamp),
-	}
-	blockNumber := header.Number
-	if int64(new(big.Int).Mod(num, common.VoteSlot).Cmp(common.Big0)) == 0{
-		header.IsCheckPoint = big.NewInt(1)
-	}else{
-		header.IsCheckPoint = big.NewInt(0)
+	// Could potentially happen if starting to mine in an odd state.
+	err := self.makeCurrent(parent, header)
+	if err != nil {
+		log.Error("Failed to create mining context", "err", err)
+		return
 	}
 
 	// Only set the coinbase if we are mining (avoid spurious block rewards)
 	if atomic.LoadInt32(&self.mining) == 1 {
 		totalMinerNum := minerlist.ReadMinerNum(self.current.state)
-		if totalMinerNum.Int64() == 0 {
-			log.Error("no miner, please check the genesis.json file")
+
+		// check whether coinbase is legal miner
+		if !self.isMiner(totalMinerNum, blockNumber) {
 			return
 		}
 
-		if !minerlist.IsMiner(self.current.state, self.coinbase) {
-			log.Error("Coinbase should be legal miner address, please register for mining")
+		// collect pre block info and calculate whether the miner is correct for current block
+		var preQr []byte
+		if header.Number.Cmp(common.Big1) == 0 {
+			preQr = common.GenesisMinerQrSignature
+		} else {
+			preQr = parent.MinerQrSignature()
+		}
+		preCoinbase := parent.Coinbase()
+		tstampSub := header.Time.Int64() - parent.Time().Int64()
+		n := big.NewInt(tstampSub / common.BlockSlot.Int64())
+
+		//check whether coinbase is valid miner
+		IsValidMiner, level, preMinerid := self.checkIsVaildMiner(preCoinbase, preQr, blockNumber, totalMinerNum, n)
+		if !IsValidMiner {
+			return
+		}
+
+		// calculate minerQrSignature for current block
+		qr, err := minerlist.CalQrOrIdNext(preCoinbase.Bytes(), blockNumber, preQr)
+		if err != nil {
+			log.Error("Failed to CalQrOrIdNext", "err", err)
 			return
 		}
 
 		// Look up the wallet containing the requested signer
-		account := accounts.Account{Address: self.coinbase}
-		wallet, err :=self.eth.AccountManager().Find(account)
-		if err != nil {
-			log.Error("To be a miner of usechain RPOW, need local account","err", err)
-			return
-		}
-
-		minerHash := crypto.Keccak256Hash(append((parent.Coinbase()).Bytes(), header.Number.Bytes()...))
-		// Assemble sign the data with the wallet
-		_ , err = wallet.SignHash(account, minerHash.Bytes())
-		if err != nil {
-			log.Error("Failed to unlock the coinbase account", "err", err)
-			return
-		}
-
-		preSignatureQr := parent.MinerQrSignature()
-
-		preCoinbase := parent.Coinbase()
-		qr := minerlist.CalQr(preCoinbase.Bytes(), blockNumber, preSignatureQr)
-		//idTarget := new(big.Int).Rem(qr.Big(), totalMinerNum)
-
-		tstampSub := header.Time.Int64() - parent.Time().Int64()
-		n := big.NewInt(tstampSub / common.BlockSlot.Int64())
-
-		//signature, err := wallet.SignHash(account, minerHash.Bytes())
-		preDifficultyLevel := parent.DifficultyLevel()
-
-		if header.Number.Cmp(common.Big1) == 0 {
-			header.MinerQrSignature = []byte(genesisQrSignature)
-			preDifficultyLevel = big.NewInt(0)
-			preSignatureQr = []byte(genesisQrSignature)
+		minerQrSignature := self.calMinerQrSignature(qr)
+		if minerQrSignature != nil {
+			header.MinerQrSignature = bytes.Join([][]byte{minerQrSignature, qr.Bytes()}, []byte(""))
 		} else {
-			minerQrSignature, _ := wallet.SignHash(account, qr.Bytes())
-			header.MinerQrSignature = minerQrSignature[:20]
-		}
-
-		IsValidMiner, level := minerlist.IsValidMiner(self.current.state, self.coinbase, preCoinbase, preSignatureQr, blockNumber, totalMinerNum, n, preDifficultyLevel)
-
-		if !IsValidMiner {
-		DONE1:
-			for{
-				select {
-				case <-self.chainRpowCh:
-				default:
-					break DONE1
-				}
-			}
-			//time.Sleep(time.Duration(tstampSub % slot + 1) * time.Second)
-			time.Sleep(10 * time.Millisecond)
-			self.chainRpowCh <- 1
 			return
 		}
-
+		// calculate PrimaryMiner and  DifficultyLevel for current block
+		if totalMinerNum.Int64() != 0 {
+			header.PrimaryMiner = common.BytesToAddress(minerlist.ReadMinerAddress(self.current.state, preMinerid))
+		} else {
+			header.PrimaryMiner = self.coinbase
+		}
 		header.DifficultyLevel = big.NewInt(level)
 		if header.Number.Cmp(common.Big1) == 0 {
 			header.DifficultyLevel = big.NewInt(0)
@@ -541,7 +491,7 @@ func (self *worker) commitNewWork() {
 			log.Error("Failed to prepare header for mining", "err", err)
 			return
 		}
-	}else {
+	} else {
 		if err := self.engine.Prepare(self.chain, header, nil); err != nil {
 			log.Error("Failed to prepare header for mining", "err", err)
 			return
@@ -549,30 +499,31 @@ func (self *worker) commitNewWork() {
 	}
 
 	// Could potentially happen if starting to mine in an odd state.
-	err := self.makeCurrent(parent, header)
+	err = self.makeCurrent(parent, header)
 	if err != nil {
 		log.Error("Failed to create mining context", "err", err)
 		return
 	}
+
 	// Create the current work task and check any fork transitions needed
 	work := self.current
+	committeeCnt := self.chain.GetCommitteeCount()
 	var pending map[common.Address]types.Transactions
-	if header.IsCheckPoint.Cmp(common.Big1) == 0 {
-		pending, err = self.eth.TxPool().GetValidPbft(blockNumber.Uint64() - 1)
-		gen, targetHash, _ := CanGenBlockInCheckPoint(pending)
+	if header.IsCheckPoint.Cmp(common.Big1) == 0 && atomic.LoadInt32(&self.mining) == 1 {
+		pending, err = self.eth.TxPool().GetValidPbft(blockNumber.Uint64()-1, core.GetIndexForVote(time.Now().Unix(), parent.Time().Int64()))
+		gen, targetHash, _ := canGenBlockInCheckPoint(pending, committeeCnt)
 		if !gen {
-			DONE2:
-				for{
-					select {
-					case <-self.chainRpowCh:
-					default:
-						break DONE2
-					}
+		DONE2:
+			for {
+				select {
+				case <-self.chainRpowCh:
+				default:
+					break DONE2
 				}
-				//time.Sleep(time.Duration(tstampSub % slot + 1) * time.Second)
-				time.Sleep(10 * time.Millisecond)
-				self.chainRpowCh <- 1
-				return
+			}
+			time.Sleep(10 * time.Millisecond)
+			self.chainRpowCh <- 1
+			return
 		} else {
 			if parent.Hash() != targetHash {
 				log.Info("Switch block chain", "current hash", parent.Hash().Hex(), "parent height", parent.NumberU64(), "target hash", targetHash.Hex())
@@ -593,7 +544,7 @@ func (self *worker) commitNewWork() {
 				}
 			}
 		}
-	}else{
+	} else {
 		pending, err = self.eth.TxPool().Pending()
 	}
 
@@ -617,8 +568,108 @@ func (self *worker) commitNewWork() {
 	self.push(work)
 }
 
-func CanGenBlockInCheckPoint(txs map[common.Address]types.Transactions) (bool, common.Hash, uint32) {
-	if float64(len(txs)) < math.Ceil(float64(common.MaxCommitteemanCount)*2 / 3) {
+func checkMiningTooFar(tstamp int64) {
+	if now := time.Now().Unix(); tstamp > now+1 {
+		wait := time.Duration(tstamp-now) * time.Second
+		log.Info("Mining too far in the future", "wait", common.PrettyDuration(wait))
+		time.Sleep(wait)
+	}
+}
+
+func (self *worker) checkBlockInterval(parent *types.Block, tstamp int64) bool {
+	if parent.Time().Cmp(new(big.Int).SetInt64(tstamp-int64(common.BlockInterval))) > 0 {
+	DONE:
+		for {
+			select {
+			case <-self.chainRpowCh:
+			default:
+				break DONE
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+		self.chainRpowCh <- 1
+		return false
+	}
+	return true
+}
+
+func (self *worker) headPrepare(parent *types.Block, tstamp int64) (header *types.Header, blockNumber *big.Int) {
+	num := parent.Number()
+	header = &types.Header{
+		ParentHash: parent.Hash(),
+		Number:     num.Add(num, common.Big1),
+		//GasLimit:   core.CalcGasLimit(parent),
+		GasLimit:   210000000,
+		Extra:      self.extra,
+		Time:       big.NewInt(tstamp),
+		Difficulty: big.NewInt(1),
+	}
+	blockNumber = header.Number
+	if header.Number.Int64() >= common.VoteSlotForGenesis && int64(new(big.Int).Mod(header.Number, common.VoteSlot).Cmp(common.Big0)) == 0 {
+		header.IsCheckPoint = big.NewInt(1)
+	} else {
+		header.IsCheckPoint = big.NewInt(0)
+	}
+	return header, blockNumber
+}
+
+func (self *worker) checkIsVaildMiner(preCoinbase common.Address, preQr []byte, blockNumber *big.Int, totalMinerNum *big.Int, n *big.Int) (bool, int64, int64) {
+	IsValidMiner, level, preMinerid := minerlist.IsValidMiner(self.current.state, self.coinbase, preCoinbase, preQr, blockNumber, totalMinerNum, n)
+	if !IsValidMiner {
+	DONE1:
+		for {
+			select {
+			case <-self.chainRpowCh:
+			default:
+				break DONE1
+			}
+		}
+		time.Sleep(10 * time.Millisecond)
+		self.chainRpowCh <- 1
+		return IsValidMiner, level, preMinerid
+	}
+	return IsValidMiner, level, preMinerid
+}
+
+func (self *worker) calMinerQrSignature(qr common.Hash) []byte {
+	account := accounts.Account{Address: self.coinbase}
+	wallet, err := self.eth.AccountManager().Find(account)
+	if err != nil {
+		log.Error("To be a miner of usechain RPOW, need local account", "err", err)
+		return nil
+	}
+
+	minerQrSignature, err := wallet.SignHash(account, qr.Bytes())
+	if err != nil {
+		log.Error("Failed to unlock the coinbase account", "err", err)
+		return nil
+	}
+	return minerQrSignature
+}
+
+func (self *worker) isMiner(totalMinerNum *big.Int, blockNumber *big.Int) bool {
+	isMiner, flag := minerlist.IsMiner(self.current.state, self.coinbase, totalMinerNum, blockNumber)
+	if !isMiner {
+		if flag == 1 {
+			misconducts := minerlist.GetMisconducts(self.current.state, self.coinbase).Int64()
+			if misconducts < common.MisconductLimitsLevel3 {
+				resetBlockNumber := minerlist.GetPunishHeight(self.current.state, self.coinbase).Int64() + common.PenaltyBlockTime
+				log.Warn("Coinbase's misconducts: ", "misconducts", misconducts)
+				log.Warn("Coinbase is being punished, Mining will commence after: ", "blockNumber", resetBlockNumber)
+			} else {
+				log.Warn("Coinbase's misconducts: ", "misconducts", misconducts)
+				log.Warn("Coinbase has been permanently punished, Mining is forbidden")
+			}
+		} else {
+			log.Warn("Coinbase needs to register as a miner, Please try 'miner.stop();use.minerRegister({from:use.coinbase});miner.start()'")
+		}
+		return false
+	}
+	return true
+}
+
+func canGenBlockInCheckPoint(txs map[common.Address]types.Transactions, cnt int32) (bool, common.Hash, uint32) {
+	if float64(len(txs)) < math.Ceil(float64(cnt)*2/3) {
 		return false, common.Hash{}, 0
 	}
 
@@ -645,7 +696,7 @@ func CanGenBlockInCheckPoint(txs map[common.Address]types.Transactions) (bool, c
 		maxHash = hash
 	}
 
-	if float64(maxCount) < math.Ceil(float64(common.MaxCommitteemanCount)*2 / 3) {
+	if float64(maxCount) < math.Ceil(float64(cnt)*2/3) {
 		return false, maxHash, maxCount
 	}
 
@@ -690,12 +741,12 @@ func (env *Work) commitTransactions(mux *event.TypeMux, txs *types.TransactionsB
 		from, _ := types.Sender(env.signer, tx)
 		// Check whether the tx is replay protected. If we're not in the EIP155 hf
 		// phase, start ignoring the sender until we do.
-		if tx.Protected() && !env.config.IsEIP155(env.header.Number) {
-			log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", env.config.EIP155Block)
-
-			txs.Pop()
-			continue
-		}
+		//if tx.Protected() && !env.config.IsEIP155(env.header.Number) {
+		//	log.Trace("Ignoring reply protected transaction", "hash", tx.Hash(), "eip155", env.config.EIP155Block)
+		//
+		//	txs.Pop()
+		//	continue
+		//}
 		// Start executing the transaction
 		env.state.Prepare(tx.Hash(), common.Hash{}, env.tcount)
 

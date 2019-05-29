@@ -28,9 +28,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/hashicorp/golang-lru"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/common/mclock"
 	"github.com/usechain/go-usechain/consensus"
+	"github.com/usechain/go-usechain/contracts/manager"
 	"github.com/usechain/go-usechain/core/state"
 	"github.com/usechain/go-usechain/core/types"
 	"github.com/usechain/go-usechain/core/vm"
@@ -42,7 +44,6 @@ import (
 	"github.com/usechain/go-usechain/params"
 	"github.com/usechain/go-usechain/rlp"
 	"github.com/usechain/go-usechain/trie"
-	"github.com/hashicorp/golang-lru"
 	"gopkg.in/karalabe/cookiejar.v2/collections/prque"
 )
 
@@ -131,7 +132,8 @@ type BlockChain struct {
 
 	badBlocks *lru.Cache // Bad block cache
 
-	votedHash common.Hash // valid voted block hash
+	votedHash    common.Hash // valid voted block hash
+	committeeCnt int32       // committee max number
 }
 
 // NewBlockChain returns a fully initialised block chain using information
@@ -202,6 +204,10 @@ func (bc *BlockChain) getProcInterrupt() bool {
 	return atomic.LoadInt32(&bc.procInterrupt) == 1
 }
 
+func (bc *BlockChain) chainDb() ethdb.Database {
+	return bc.db
+}
+
 // loadLastState loads the last known chain state from the database. This method
 // assumes that the chain manager mutex is held.
 func (bc *BlockChain) loadLastState() error {
@@ -226,6 +232,10 @@ func (bc *BlockChain) loadLastState() error {
 		if err := bc.repair(&currentBlock); err != nil {
 			return err
 		}
+	}
+	if err := bc.loadCommitteeState(currentBlock.Root(), bc.stateCache); err != nil {
+		log.Warn("Load committee info failed", "err", err)
+		return err
 	}
 	// Everything seems to be fine, set as the head block
 	bc.currentBlock.Store(currentBlock)
@@ -258,6 +268,17 @@ func (bc *BlockChain) loadLastState() error {
 	log.Info("Loaded most recent local full block", "number", currentBlock.Number(), "hash", currentBlock.Hash(), "td", blockTd)
 	log.Info("Loaded most recent local fast block", "number", currentFastBlock.Number(), "hash", currentFastBlock.Hash(), "td", fastTd)
 
+	return nil
+}
+
+// loadCommitteeState loads the last known committee state from the database.
+func (bc *BlockChain) loadCommitteeState(root common.Hash, db state.Database) error {
+	// Make sure the state associated with the block is available
+	statedb, err := state.New(root, bc.stateCache)
+	if err != nil {
+		return err
+	}
+	bc.committeeCnt = manager.GetCommitteeCount(statedb)
 	return nil
 }
 
@@ -838,6 +859,23 @@ func (bc *BlockChain) InsertReceiptChain(blockChain types.Blocks, receiptChain [
 			stats.ignored++
 			continue
 		}
+		// Check local voted block
+		if block.NumberU64()%common.VoteSlot.Uint64() == 0 && block.Number().Int64() >= common.VoteSlotForGenesis {
+			tempBlock := bc.GetBlockByNumber(block.NumberU64())
+			if tempBlock != nil {
+				if block.Header().ParentHash != tempBlock.Header().ParentHash {
+					return i, fmt.Errorf("refuse to cover local voted block: %v", tempBlock.Hash())
+				}
+			}
+		}
+		//} else {
+		//	futureHeight := (block.NumberU64() / common.VoteSlot.Uint64() + 1) * common.VoteSlot.Uint64()
+		//	tempBlock := bc.GetBlockByNumber(futureHeight)
+		//	if tempBlock != nil {
+		//		return i, fmt.Errorf("refuse to cover local voted block: %v", tempBlock.Hash())
+		//	}
+		//}
+
 		// Compute all the non-consensus fields of the receipts
 		SetReceiptsData(bc.chainConfig, block, receipts)
 		// Write all the data out into the database
@@ -1001,7 +1039,7 @@ func (bc *BlockChain) WriteBlockWithState(block *types.Block, receipts []*types.
 	reorg := externTd.Cmp(localTd) > 0
 	currentBlock = bc.CurrentBlock()
 	if !reorg && externTd.Cmp(localTd) == 0 {
-		if block.NumberU64() % common.VoteSlot.Uint64() == common.VoteSlot.Uint64() - 1 {
+		if block.NumberU64()%common.VoteSlot.Uint64() == common.VoteSlot.Uint64()-1 {
 			// Split same-difficulty blocks by number, then by hash
 			reorg = block.NumberU64() < currentBlock.NumberU64() || (block.NumberU64() == currentBlock.NumberU64() && strings.Compare(block.Hash().Hex(), currentBlock.Hash().Hex()) < 0)
 		} else {
@@ -1051,8 +1089,6 @@ func (bc *BlockChain) InsertChain(chain types.Blocks) (int, error) {
 	bc.PostChainEvents(events, logs)
 	return n, err
 }
-
-var Inserted_forked_block int
 
 // insertChain will execute the actual chain insertion and event aggregation. The
 // only reason this method exists as a separate one is to make locking cleaner
@@ -1111,6 +1147,24 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		}
 		// Wait for the block's verification to complete
 		bstart := time.Now()
+
+		// Check local voted block
+
+		if block.NumberU64()%common.VoteSlot.Uint64() == 0 && block.Number().Int64() >= common.VoteSlotForGenesis {
+			tempBlock := bc.GetBlockByNumber(block.NumberU64())
+			if tempBlock != nil {
+				if block.Header().ParentHash != tempBlock.Header().ParentHash {
+					return i, events, coalescedLogs, fmt.Errorf("refuse to cover local voted block: %v", tempBlock.Hash().Hex())
+				}
+			}
+		}
+		//else {
+		//	futureHeight := (block.NumberU64() / common.VoteSlot.Uint64() + 1) * common.VoteSlot.Uint64()
+		//	tempBlock := bc.GetBlockByNumber(futureHeight)
+		//	if tempBlock != nil {
+		//		return i, events, coalescedLogs, fmt.Errorf("refuse to cover local voted block: %v", tempBlock.Hash().Hex())
+		//	}
+		//}
 
 		err := <-results
 		if err == nil {
@@ -1191,6 +1245,12 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 			return i, events, coalescedLogs, err
 		}
 		// Process block using the parent state as reference point.
+		err = bc.Validator().ValidateMiner(block, parent, state)
+		if err != nil {
+			fmt.Errorf("Invalid miner")
+			return i, events, coalescedLogs, err
+		}
+
 		receipts, logs, usedGas, err := bc.processor.Process(block, state, bc.vmConfig)
 		if err != nil {
 			bc.reportBlock(block, receipts, err)
@@ -1225,13 +1285,6 @@ func (bc *BlockChain) insertChain(chain types.Blocks) (int, []interface{}, []*ty
 		case SideStatTy:
 			log.Debug("Inserted forked block", "number", block.Number(), "hash", block.Hash(), "diff", block.Difficulty(), "elapsed",
 				common.PrettyDuration(time.Since(bstart)), "txs", len(block.Transactions()), "gas", block.GasUsed(), "uncles", len(block.Uncles()))
-
-			Inserted_forked_block++
-			log.Info("Inserted forked block", "number", block.Number(), "hash", block.Hash(), "diff", block.Difficulty(), "elapsed",
-				common.PrettyDuration(time.Since(bstart)), "txs", len(block.Transactions()), "gas", block.GasUsed(), "uncles", len(block.Uncles()))
-
-			fmt.Println("Inserted forked block", "number", block.Number(), "hash", block.Hash().String(), "diff", block.Difficulty(), "elapsed",
-				common.PrettyDuration(time.Since(bstart)), "txs", len(block.Transactions()), "gas", block.GasUsed(), "uncles", len(block.Uncles()), "Inserted_forked_block", Inserted_forked_block)
 
 			blockInsertTimer.UpdateSince(bstart)
 			events = append(events, ChainSideEvent{block})
@@ -1540,6 +1593,10 @@ func (bc *BlockChain) writeHeader(header *types.Header) error {
 
 	_, err := bc.hc.WriteHeader(header)
 	return err
+}
+
+func (bc *BlockChain) GetCommitteeCount() int32 {
+	return bc.committeeCnt
 }
 
 // CurrentHeader retrieves the current head header of the canonical chain. The

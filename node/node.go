@@ -55,11 +55,11 @@ func Initial() {
 
 	//Check the committee account format && legality
 	addr := GlobalConfig.UserProfile.Address
-	if addr == "" || !common.IsHexAddress(addr) {
+	if addr == ""  {
 		utils.Fatalf("Please fill in correct committee address in conf")
 	} else {
 		GlobalConfig.Kstore = account.DefaultKeystore(*wnode.ArgMoonet)
-		signer, err := account.CommitteeAccount(common.HexToAddress(addr), GlobalConfig.Kstore)
+		signer, err := account.CommitteeAccount(common.UmAddressToAddress(addr), GlobalConfig.Kstore)
 		if err != nil {
 			utils.Fatalf("Please import committee corresponding keystore file")
 		}
@@ -83,7 +83,7 @@ func Initial() {
 func run() {
 	// Listening the network msg
 	go func(){
-		shamirkey.ShamirKeySharesListening(GlobalConfig.UserProfile, cache, keypool)
+		shamirkey.ShamirKeySharesListening(&GlobalConfig, cache, keypool)
 	}()
 
 	// Process handle

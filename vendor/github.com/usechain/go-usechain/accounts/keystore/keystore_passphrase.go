@@ -32,17 +32,17 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
-	"io/ioutil"
-	"path/filepath"
 	"errors"
+	"fmt"
+	"github.com/pborman/uuid"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/common/math"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/crypto/randentropy"
-	"github.com/pborman/uuid"
 	"golang.org/x/crypto/pbkdf2"
 	"golang.org/x/crypto/scrypt"
+	"io/ioutil"
+	"path/filepath"
 )
 
 const (
@@ -76,9 +76,8 @@ type keyStorePassphrase struct {
 
 /////////////////////////////////////greg add /////////////////
 var (
-	ErrABaddressInvalid       = errors.New("invalid ABaddress address")
+	ErrABaddressInvalid = errors.New("invalid SubAddress address")
 )
-
 
 func (ks keyStorePassphrase) GetKey(addr common.Address, filename, auth string) (*Key, error) {
 	// Load the key from the keystore and decrypt its contents
@@ -92,7 +91,7 @@ func (ks keyStorePassphrase) GetKey(addr common.Address, filename, auth string) 
 	}
 	// Make sure we're really operating on the requested key (no swap attacks)
 	if key.Address != addr {
-		return nil, fmt.Errorf("key content mismatch: have account %x, want %x", key.Address, addr)
+		return nil, fmt.Errorf("key content mismatch: have account %s, want %s", key.Address, addr)
 	}
 	return key, nil
 }
@@ -113,7 +112,7 @@ func (ks keyStorePassphrase) StoreKey(filename string, key *Key, auth string) er
 
 //////////////////////////////////////////////////////////////////////////
 var (
-	ErrABaddressFieldNotExist = errors.New("It seems that this account doesn't include a valid  address field, please update your keyfile version")
+	ErrABaddressFieldNotExist = errors.New("It seems that this account doesn't include a valid wanchain address field, please update your keyfile version")
 )
 
 // Implements GetEncryptedKey method of keystore interface
@@ -138,30 +137,27 @@ func GenerateKeyWithWAddress(keyjson []byte) (*Key, error) {
 		return nil, err
 	}
 
-	ABaddress, ok := m["ABaddress"].(string)
+	SubAddress, ok := m["SubAddress"].(string)
 
-	if !ok || ABaddress == "" {
+	if !ok || SubAddress == "" {
 		return nil, ErrABaddressFieldNotExist
 	}
 
-	waddressRaw, err := hex.DecodeString(ABaddress)
+	waddressRaw, err := hex.DecodeString(SubAddress)
 	if err != nil {
 		return nil, err
 	}
 
-	if len(waddressRaw) != common.ABaddressLength {
+	if len(waddressRaw) != common.SubAddressLength {
 		return nil, ErrABaddressInvalid
 	}
 
 	key := new(Key)
-	copy(key.ABaddress[:], waddressRaw)
+	copy(key.SubAddress[:], waddressRaw)
 	return key, nil
 }
+
 //////////////////////////////////////////////////////////////////////////
-
-
-
-
 
 func (ks keyStorePassphrase) JoinPath(filename string) string {
 	if filepath.IsAbs(filename) {
@@ -211,11 +207,11 @@ func EncryptKey(key *Key, auth string, scryptN, scryptP int) ([]byte, error) {
 	}
 
 	encryptedKeyJSONV3 := encryptedKeyJSONV3{
-		hex.EncodeToString(key.Address[:]),
+		common.AddressToUmAddress(key.Address),
 		cryptoStruct,
 		key.Id.String(),
 		version,
-		hex.EncodeToString(key.ABaddress[:]),
+		hex.EncodeToString(key.SubAddress[:]),
 	}
 	return json.Marshal(encryptedKeyJSONV3)
 }

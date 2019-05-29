@@ -118,7 +118,7 @@ func Combine256Bit(shares []string) (*big.Int, error) {
 	// For each share...
 	for i := range shares {
 		// ...ensure that it is valid...
-		if IsValidShare256Bit(shares[i]) == false {
+		if IsValidShare(shares[i]) == false {
 			return big.NewInt(-1), ErrOneOfTheSharesIsInvalid
 		}
 
@@ -312,7 +312,7 @@ func VerifyPolynomial(share string, pubkeyArray []*ecdsa.PublicKey) bool {
 	prime, _ = big.NewInt(0).SetString(DefaultPrimeStr, 10)
 
 	// ...ensure that it is valid...
-	if IsValidShare256Bit(share) == false {
+	if IsValidShare(share) == false {
 		return false
 	}
 
