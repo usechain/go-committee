@@ -114,6 +114,10 @@ func NewSharePool() *SharePool{
 	}
 }
 
+func (self *SharePool) AddVerifiedMain(data VerifiedMain)  {
+	self.VerifiedChan <- data
+}
+
 func (self *SharePool) GetVerifiedCertHash(key string) common.Hash {
 	return self.verifiedSet[key]
 }

@@ -128,13 +128,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 					log.Debug( "Unmarshal failed: " , "err", err )
 				}
 
-				hashKeyString := hexutil.Encode(hashKey[:])
-				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
-				if err != nil {
-					log.Error("CheckUserRegisterCert failed", "err", err)
-					return
-				}
-
 				// read requestor's public key
 				pubkey, ok := (mainAccount[5]).(string)
 				if !ok {
@@ -142,6 +135,26 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 					return
 				}
 				log.Debug("Get public key", "key", string(pubkey))
+				pubstringTObyte, _ := hexutil.Decode(string(pubkey))
+				pubxxx := crypto.ToECDSAPub(pubstringTObyte)
+
+
+				hashKeyString := hexutil.Encode(hashKey[:])
+				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
+				if err != nil {
+					verifiedData := core.VerifiedMain{
+						Addr: crypto.PubkeyToAddress(*pubxxx),
+						RegisterID: big.NewInt(mainID.Int64()),
+						Hashkey: common.HexToHash(hashKeyString),
+						Status: big.NewInt(4),
+					}
+
+					//Confirm stat with the contract
+					pool.AddVerifiedMain(verifiedData)
+					
+					log.Error("CheckUserRegisterCert failed", "err", err)
+					return
+				}
 
 				decrypedAndVerifyData := strings.Join([]string{hashKeyString, id.Data, string(pubkey)},"+")
 				sendIdSet := sendPublickeyShared(usechain, nodelist, string(pubkey), max, addrIDstring)
