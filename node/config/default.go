@@ -24,6 +24,7 @@ import (
 	"github.com/usechain/go-usechain/accounts/keystore"
 	"github.com/usechain/go-committee/contract/contract"
 	"github.com/usechain/go-committee/utils"
+	"github.com/usechain/go-usechain/log"
 )
 
 // Usechain implements the Usechain Committee full node service.
@@ -38,6 +39,39 @@ type Usechain struct {
 	Workstat 			State
 }
 
+// read the config from profile
+func Init(u *Usechain) error{
+	var err error
+	u.UserProfile, err = ReadProfile()
+	if err != nil {
+		log.Error("Read the committee conf failed", "err", err)
+		return err
+	}
+	u.ManagerContract, err = DefaultCommitteeContract()
+	if err != nil {
+		log.Error("Read the contract conf failed", "err", err)
+		return err
+	}
+	u.IdentityContract, err = DefaultAuthenticationContract()
+	if err != nil {
+		log.Error("Read the identity contract conf failed", "err", err)
+		return err
+	}
+	u.WisperInfo, err = ReadWhisperNode()
+	if err != nil {
+		log.Error("Read the whisper conf failed", "err", err)
+		return err
+	}
+	u.UsedClient, err = ReadUsedConfig()
+	if err != nil {
+		log.Error("Read the used client conf failed", "err", err)
+		return err
+	}
+	u.NodeRPC = usedrpc.NewUseRPC(u.UsedClient.Url)
+	return nil
+}
+
+
 // Structure of a contract
 type contractConfig struct {
 	Name        string
@@ -47,17 +81,43 @@ type contractConfig struct {
 }
 
 func DefaultCommitteeContract() (*contract.Contract, error) {
+	crt, err := ReadManagerContractConfig()
+	if err != nil {
+		return nil, err
+	}
+	return contract.New(crt.Name, crt.Description, crt.Address, crt.AbiStr)
+}
+
+func ReadManagerContractConfig() (*contractConfig, error) {
 	cfg, _ := os.Open(utils.DefaultDataDir() + "managerContract.json")
 	defer cfg.Close()
 
 	decoder := json.NewDecoder(cfg)
-	crt := contractConfig{}
-	err := decoder.Decode(&crt)
+	ctr := &contractConfig{}
+	err := decoder.Decode(&ctr)
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
-	return contract.New(crt.Name, crt.Description, crt.Address, crt.AbiStr)
+	return ctr, err
 }
+
+func UpdateManagerContractConfig(ctr *contractConfig) error {
+	b, err := json.Marshal(ctr)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	cfg, _ := os.OpenFile(utils.DefaultDataDir() + "managerContract.json", os.O_RDWR, 0666)
+	defer cfg.Close()
+
+	cfg.Truncate(0)
+	_, err = cfg.WriteAt(b,0)
+	if err != nil {
+		fmt.Println("err", err)
+	}
+	return err
+}
+
+
 
 func DefaultAuthenticationContract() (*contract.Contract, error) {
 	cfg, _ := os.Open(utils.DefaultDataDir() + "identityContract.json")
@@ -80,6 +140,7 @@ type CommittteeProfile struct {
 	PrivShares	string
 }
 
+
 func ReadProfile() (*CommittteeProfile, error) {
 	cfg, _ := os.Open(utils.DefaultDataDir() + "committee.json")
 	defer cfg.Close()
@@ -90,10 +151,16 @@ func ReadProfile() (*CommittteeProfile, error) {
 	if err != nil {
 		fmt.Println("Error:", err)
 	}
+	//addr := common.StringToBase58Address(crt.Address)
+	//crt.Address = common.Base58AddressToAddress(addr).String()
 	return crt, err
 }
 
 func UpdateProfile(profile *CommittteeProfile) (error) {
+	//if 	common.IsHexAddress(profile.Address) {
+	//	Addr := common.HexToAddress(profile.Address)
+	//	profile.Address = common.AddressToBase58Address(Addr).String()
+	//}
 	b, err := json.Marshal(*profile)
 	if err != nil {
 		fmt.Println("error:", err)
@@ -181,3 +248,6 @@ func UpdateUsedConfig(used *UsedConfig) error {
 	}
 	return err
 }
+
+
+

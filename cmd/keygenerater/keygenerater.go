@@ -21,6 +21,8 @@ import (
 	"github.com/usechain/go-committee/account"
 	"github.com/usechain/go-committee/console"
 	"github.com/usechain/go-committee/node/config"
+	"github.com/usechain/go-usechain/log"
+	"github.com/usechain/go-committee/wnode"
 )
 
 func main() {
@@ -28,7 +30,7 @@ func main() {
 	fmt.Print("Please enter passwd:")
 	passwd := console.Readline()
 
-	ks := account.DefaultKeystore()
+	ks := account.DefaultKeystore(*wnode.ArgMoonet)
 	ac := account.NewAccount(ks, passwd)
 	fmt.Printf("Account:%s generated!\n", ac.Address.Hex())
 
@@ -43,7 +45,7 @@ func main() {
 			p, _ := config.ReadProfile()
 			p.Address = ac.Address.Hex()
 			config.UpdateProfile(p)
-			fmt.Println("==========committee.json Updated")
+			log.Info("committee.json Updated")
 			active = false
 		case "n":
 			fmt.Println("Finished")
@@ -53,11 +55,11 @@ func main() {
 		}
 	}
 
-	fmt.Println("Please enter a used node url, example:\"http://10.30.43.237:8545\"")
+	fmt.Println("Please enter a used node url, example:\"http://10.30.43.237:8548\"")
 	fmt.Print("URL:")
 	url := console.Readline()
 	p, _ := config.ReadUsedConfig()
 	p.Url = url
 	config.UpdateUsedConfig(p)
-	fmt.Println("==========used.json Updated")
+	fmt.Println("Confit file used.json updated")
 }

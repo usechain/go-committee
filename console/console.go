@@ -32,6 +32,10 @@ import (
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-committee/account"
+	"github.com/peterh/liner"
+	"github.com/usechain/go-committee/utils"
+	"path/filepath"
+	"github.com/usechain/go-committee/node/config"
 )
 
 // Structure of a command
@@ -63,12 +67,12 @@ type Console struct {
 }
 
 // The New function creates an instance of the console type.
-func New() *Console {
+func New(conf *config.Usechain) *Console {
 	con := &Console{}
 	con.commands = make(map[string]command)
 	con.Active = false
 	con.Title = "*** Welcome to the Usechain Committee console! ***\n"
-	con.Prompt = "> "
+	con.Prompt = ""
 	con.NotFound = "Command not found: "
 	con.NewLine = "\n"
 
@@ -82,7 +86,7 @@ func New() *Console {
 	})
 
 	con.Add("use.coinbase", "Get the used node coinbase", func(typed string) {
-		c := usedrpc.NewUseRPC("http://10.30.43.237:8545")
+		c := usedrpc.NewUseRPC(conf.NodeRPC.URL())
 		coinbase, err := c.UseCoinbase()
 		if err != nil {
 			log.Info("err:", "err", err)
@@ -92,7 +96,7 @@ func New() *Console {
 	})
 
 	con.Add("use.blockNumber", "Get the block number", func(typed string) {
-		c := usedrpc.NewUseRPC("http://10.30.43.237:8545")
+		c := usedrpc.NewUseRPC(conf.NodeRPC.URL())
 		blocknumber, err := c.UseBlockNumber()
 		if err != nil {
 			log.Info("err:", "err", err)
@@ -120,6 +124,13 @@ func New() *Console {
 
 	con.Add("committee.unlock", "Unlock the committee account", func(typed string) {
 		arr := strings.Fields(typed)
+		if len(arr) == 1 {
+			arr = append(arr, "")
+		}
+		if len(arr) > 2{
+			fmt.Println("Please use committee.unlock in right format")
+			return
+		}
 		account.CommitteePasswd <- arr[1]
 	})
 
@@ -152,14 +163,39 @@ func (con *Console) Start() {
 	fmt.Print(con.Title)
 
 	// Set the initial values
-	var typed string
 	con.Active = true
+
+	var history []string
+	histfile := filepath.Join(utils.DefaultDataDir() + "history")
+
+	Prompter := liner.NewLiner()
+	defer Prompter.Close()
+
+	Prompter.SetCtrlCAborts(true)
+
+	Prompter.SetCompleter(func(line string) (c []string) {
+		for n, _ := range con.commands {
+			if strings.HasPrefix(n, strings.ToLower(line)) {
+				c = append(c, n)
+			}
+		}
+		return
+	})
+
+	if content, err := os.Open(histfile); err != nil {
+		Prompter.ReadHistory(strings.NewReader(strings.Join(nil, "\n")))
+		content.Close()
+	} else {
+		Prompter.ReadHistory(content)
+		content.Close()
+	}
 
 	// Loop while the value is true
 	for con.Active {
-		fmt.Print(con.Prompt)
-		typed = Readline()
-
+		typed, err := Prompter.Prompt("> ")
+		if err != nil {
+			fmt.Println(err)
+		}
 		// If at least a character is typed
 		if arr := strings.Fields(typed); len(arr) > 0 {
 			if cmd, ok := con.commands[arr[0]]; ok {
@@ -168,8 +204,22 @@ func (con *Console) Start() {
 			} else {
 				fmt.Println(con.NotFound + arr[0])
 			}
-
 			fmt.Print(con.NewLine)
+		}
+
+		if command := strings.TrimSpace(typed); len(history) == 0 || command != history[len(history)-1] {
+			history = append(history, command)
+			Prompter.AppendHistory(command)
+
+			if f, err := os.Create(histfile); err != nil {
+				log.Error("Error writing history file: ", "error", err)
+			} else {
+				_, err := Prompter.WriteHistory(f)
+				if err != nil{
+					log.Error("Error writing history file: ", "error", err)
+				}
+				f.Close()
+			}
 		}
 	}
 }

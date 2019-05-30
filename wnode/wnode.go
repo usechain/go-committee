@@ -47,6 +47,7 @@ import (
 	whisper "github.com/usechain/go-usechain/whisper/whisperv6"
 	"golang.org/x/crypto/pbkdf2"
 	"github.com/usechain/go-committee/node/config"
+	"encoding/json"
 )
 
 const quitCommand = "~Q"
@@ -94,6 +95,7 @@ var (
 	testMode       = flag.Bool("test", false, "use of predefined parameters for diagnostics (password, etc.)")
 	echoMode       = flag.Bool("echo", false, "echo mode: prints some arguments for diagnostics")
 
+	ArgMoonet 	 = flag.Bool("moonet", false, "lauch moonet config")
 	argVerbosity = flag.Int("verbosity", int(log.LvlDebug), "log verbosity level")
 	argTTL       = flag.Uint("ttl", 30, "time-to-live for messages in seconds")
 	argWorkTime  = flag.Uint("work", 5, "work time in seconds")
@@ -124,7 +126,7 @@ func processArgs() {
 
 	var err error
 	profile, err = config.ReadWhisperNode()
-	fmt.Println(profile)
+	fmt.Println("ReadWhisperNode: ", profile)
 	if err != nil {
 		log.Error("Read the whisper conf", "error", err)
 	}
@@ -135,6 +137,10 @@ func processArgs() {
 		if err != nil {
 			utils.Fatalf("Failed to load file [%s]: %s.", *argIDFile, err)
 		}
+	}
+
+	if *ArgMoonet {
+		*ArgMoonet = true
 	}
 
 	const enodePrefix = "enode://"
@@ -344,8 +350,8 @@ func startServer() error {
 		return err
 	}
 
-	fmt.Printf("my public key: %s \n", common.ToHex(crypto.FromECDSAPub(&asymKey.PublicKey)))
-	fmt.Println(server.NodeInfo().Enode)
+	log.Info("My public key: ", "pubkey", common.ToHex(crypto.FromECDSAPub(&asymKey.PublicKey)))
+	log.Info("Enode", "Enode", server.NodeInfo().Enode)
 
 	if *bootstrapMode {
 		configureNode()
@@ -528,7 +534,7 @@ func sendLoop() {
 			// because in asymmetric mode it is impossible to decrypt it
 			timestamp := time.Now().Unix()
 			from := crypto.PubkeyToAddress(asymKey.PublicKey)
-			fmt.Printf("\n%d <%x>: %s\n", timestamp, from, s)
+			fmt.Printf("sendLoop \n%d <%x>: %s\n", timestamp, from, s)
 		}
 	}
 }
@@ -590,7 +596,7 @@ func fileReaderLoop() {
 
 func scanLine(prompt string) string {
 	if len(prompt) > 0 {
-		fmt.Print(prompt)
+		fmt.Print("scanLine: ", prompt)
 	}
 	txt, err := input.ReadString('\n')
 	if err != nil {
@@ -647,6 +653,11 @@ func SendMsg(payload []byte, destpub *ecdsa.PublicKey) common.Hash {
 		return common.Hash{}
 	}
 
+	d, err := json.Marshal(&envelope)
+	if err != nil {
+		fmt. Println ( "error:" , err )
+	}
+	log.Info("Send message", "message", string(d))
 	return envelope.Hash()
 }
 
@@ -704,7 +715,7 @@ func messageLoop() {
 			for _, msg := range messages {
 				reportedOnce := false
 				if !*fileExMode && len(msg.Payload) <= 2048 {
-					//printMessageInfo(msg)
+					printMessageInfo(msg)
 					ChanWhisper <- msg.Payload
 					reportedOnce = true
 				}
@@ -732,9 +743,9 @@ func printMessageInfo(msg *whisper.ReceivedMessage) {
 	}
 
 	if whisper.IsPubKeyEqual(msg.Src, &asymKey.PublicKey) {
-		fmt.Printf("\n%s <%x>: %s\n", timestamp, address, text) // message from myself
+		log.Info("Received Message: ", "timestamp", timestamp, "address", address, "msg", text) // message from myself
 	} else {
-		fmt.Printf("\n%s [%x]: %s\n", timestamp, address, text) // message from a peer
+		log.Info("Received Message: ", "timestamp", timestamp, "address", address, "msg", text) // message from a peer
 	}
 }
 

@@ -30,7 +30,6 @@ import (
 	"github.com/usechain/go-usechain/core"
 	"github.com/usechain/go-usechain/core/state"
 	"github.com/usechain/go-usechain/core/types"
-	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/miner"
 	"github.com/usechain/go-usechain/params"
 	"github.com/usechain/go-usechain/rlp"
@@ -57,11 +56,6 @@ func (api *PublicEthereumAPI) Usebase() (common.Address, error) {
 // Coinbase is the address that mining rewards will be send to (alias for Usebase)
 func (api *PublicEthereumAPI) Coinbase() (common.Address, error) {
 	return api.Usebase()
-}
-
-// Hashrate returns the POW hashrate
-func (api *PublicEthereumAPI) Hashrate() hexutil.Uint64 {
-	return hexutil.Uint64(api.e.Miner().HashRate())
 }
 
 // PublicMinerAPI provides an API to control the miner.
@@ -107,14 +101,6 @@ func (api *PublicMinerAPI) GetWork() ([3]string, error) {
 	return work, nil
 }
 
-// SubmitHashrate can be used for remote miners to submit their hash rate. This enables the node to report the combined
-// hash rate of all miners which submit work through this node. It accepts the miner hash rate and an identifier which
-// must be unique between nodes.
-func (api *PublicMinerAPI) SubmitHashrate(hashrate hexutil.Uint64, id common.Hash) bool {
-	api.agent.SubmitHashrate(id, uint64(hashrate))
-	return true
-}
-
 // PrivateMinerAPI provides private RPC methods to control the miner.
 // These methods can be abused by external users and must be considered insecure for use by untrusted users.
 type PrivateMinerAPI struct {
@@ -130,20 +116,7 @@ func NewPrivateMinerAPI(e *Ethereum) *PrivateMinerAPI {
 // of workers started is equal to the number of logical CPUs that are usable by
 // this process. If mining is already running, this method adjust the number of
 // threads allowed to use.
-func (api *PrivateMinerAPI) Start(threads *int) error {
-	// Set the number of threads if the seal engine supports it
-	if threads == nil {
-		threads = new(int)
-	} else if *threads == 0 {
-		*threads = -1 // Disable the miner from within
-	}
-	type threaded interface {
-		SetThreads(threads int)
-	}
-	if th, ok := api.e.engine.(threaded); ok {
-		log.Info("Updated mining threads", "threads", *threads)
-		th.SetThreads(*threads)
-	}
+func (api *PrivateMinerAPI) Start() error {
 	// Start the miner and return
 	if !api.e.IsMining() {
 		// Propagate the initial price point to the transaction pool
@@ -193,9 +166,46 @@ func (api *PrivateMinerAPI) SetUsebase(usebase common.Address) bool {
 	return true
 }
 
-// GetHashrate returns the current hashrate of the miner.
-func (api *PrivateMinerAPI) GetHashrate() uint64 {
-	return uint64(api.e.miner.HashRate())
+// PrivateVoterAPI provides private RPC methods to control the voter.
+// These methods can be abused by external users and must be considered insecure for use by untrusted users.
+type PrivateVoterAPI struct {
+	e *Ethereum
+}
+
+// NewPrivateVoterAPI create a new RPC service which controls the voter of this node.
+func NewPrivateVoterAPI(e *Ethereum) *PrivateVoterAPI {
+	return &PrivateVoterAPI{e: e}
+}
+
+// Start the voter. If voting is already running, do nothing
+func (api *PrivateVoterAPI) Start() error {
+	// Start the miner and return
+	if !api.e.IsVoting() {
+		return api.e.StartVoting()
+	}
+	return nil
+}
+
+// Stop the voter
+func (api *PrivateVoterAPI) Stop() bool {
+	api.e.StopVoting()
+	return true
+}
+
+// SetVotebase sets the votebase of the voter
+func (api *PrivateVoterAPI) SetVotebase(votebase common.Address) bool {
+	api.e.SetVotebase(votebase)
+	return true
+}
+
+// Votebase is the voting address
+func (api *PrivateVoterAPI) Votebase() (common.Address, error) {
+	return api.e.Votebase()
+}
+
+// Voting returns an indication if this node is currently voting.
+func (api *PrivateVoterAPI) Voting() bool {
+	return api.e.IsVoting()
 }
 
 // PrivateAdminAPI is the collection of Ethereum full node-related APIs

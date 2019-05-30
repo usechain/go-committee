@@ -20,18 +20,19 @@ import (
 	crand "crypto/rand"
 	"errors"
 	"fmt"
+	"github.com/usechain/go-usechain/core/state"
 	"math"
 	"math/big"
 	mrand "math/rand"
 	"time"
 
+	"github.com/hashicorp/golang-lru"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/consensus"
 	"github.com/usechain/go-usechain/core/types"
 	"github.com/usechain/go-usechain/ethdb"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/params"
-	"github.com/hashicorp/golang-lru"
 	"sync/atomic"
 )
 
@@ -203,7 +204,7 @@ func (hc *HeaderChain) WriteHeader(header *types.Header) (status WriteStatus, er
 // header writes should be protected by the parent chain mutex individually.
 type WhCallback func(*types.Header) error
 
-func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int) (int, error) {
+func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int, state *state.StateDB) (int, error) {
 	// Do a sanity check that the provided chain is actually ordered and linked
 	for i := 1; i < len(chain); i++ {
 		if chain[i].Number.Uint64() != chain[i-1].Number.Uint64()+1 || chain[i].ParentHash != chain[i-1].Hash() {
@@ -227,10 +228,8 @@ func (hc *HeaderChain) ValidateHeaderChain(chain []*types.Header, checkFreq int)
 	}
 	seals[len(seals)-1] = true // Last should always be verified to avoid junk
 
-
-	abort, results := hc.engine.VerifyHeaders(hc, chain, seals)
+	abort, results := hc.engine.VerifyHeaders(hc, chain, seals, state)
 	defer close(abort)
-
 
 	// Iterate over the headers and ensure they all check out
 	for i, header := range chain {

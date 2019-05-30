@@ -27,6 +27,7 @@ import (
 	"sort"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/mattn/go-colorable"
 	"github.com/peterh/liner"
@@ -179,8 +180,8 @@ func (c *Console) init(preload []string) error {
 			if _, err = c.jsre.Run(`jeth.newAccount = personal.newAccount;`); err != nil {
 				return fmt.Errorf("personal.newAccount: %v", err)
 			}
-			if _, err = c.jsre.Run(`jeth.newABaccount = personal.newABaccount;`); err != nil {
-				return fmt.Errorf("personal.newABaccount: %v", err)
+			if _, err = c.jsre.Run(`jeth.newSubAccount = personal.newSubAccount;`); err != nil {
+				return fmt.Errorf("personal.newSubAccount: %v", err)
 			}
 			if _, err = c.jsre.Run(`jeth.sign = personal.sign;`); err != nil {
 				return fmt.Errorf("personal.sign: %v", err)
@@ -194,7 +195,7 @@ func (c *Console) init(preload []string) error {
 			obj.Set("openWallet", bridge.OpenWallet)
 			obj.Set("unlockAccount", bridge.UnlockAccount)
 			obj.Set("newAccount", bridge.NewAccount)
-			obj.Set("newABaccount", bridge.NewABaccount)
+			obj.Set("newSubAccount", bridge.NewSubAccount)
 			obj.Set("sign", bridge.Sign)
 			obj.Set("verify", bridge.Verify)
 			obj.Set("verifyQuery", bridge.VerifyQuery)
@@ -441,6 +442,11 @@ func (c *Console) Execute(path string) error {
 
 // Stop cleans up the console and terminates the runtime environment.
 func (c *Console) Stop(graceful bool) error {
+	c.jsre.Run(`
+		miner.stop()
+		console.log("The program exits automatically after 5 seconds")
+	`)
+	time.Sleep(5 * time.Second)
 	if err := ioutil.WriteFile(c.histPath, []byte(strings.Join(c.history, "\n")), 0600); err != nil {
 		return err
 	}

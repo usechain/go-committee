@@ -17,110 +17,97 @@
 package node
 
 import (
-	"fmt"
 	"time"
 	"sync"
+  "fmt"
 	"github.com/usechain/go-usechain/cmd/utils"
 	"github.com/usechain/go-usechain/log"
-	"github.com/usechain/go-usedrpc"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-committee/account"
 	"github.com/usechain/go-committee/contract/manager"
 	"github.com/usechain/go-committee/shamirkey"
+	"github.com/usechain/go-committee/shamirkey/core"
 	"github.com/usechain/go-committee/node/config"
+	"github.com/usechain/go-committee/contract/creditNew"
+	"github.com/usechain/go-committee/wnode"
 )
 
 var (
-	globalConfig  config.Usechain
+	GlobalConfig  config.Usechain
+	cache		  *core.SharePool
+	keypool		  *core.KeyPool
 	wg			  sync.WaitGroup
 )
+//var ArgMoonet = flag.String("moonet", "", "lauch moonet config")
 
-//init the committee global config
-func initial() {
+
+// init the committee global config
+func Initial() {
 	log.Info("Committee node initializing ......")
 	time.Sleep(time.Second * 5)
 
-	var err error
-	globalConfig.UserProfile, err = config.ReadProfile()
-	if err != nil {
-		utils.Fatalf("Read the committee conf failed, %v", err)
-	}
-	globalConfig.ManagerContract, err = config.DefaultCommitteeContract()
-	if err != nil {
-		utils.Fatalf("Read the contract conf failed, %v", err)
-	}
-	globalConfig.IdentityContract, err = config.DefaultAuthenticationContract()
-	if err != nil {
-		utils.Fatalf("Read the identity contract conf failed, %v", err)
-	}
-	globalConfig.WisperInfo, err = config.ReadWhisperNode()
-	if err != nil {
-		utils.Fatalf("Read the whisper conf failed, %v", err)
-	}
-	globalConfig.UsedClient, err = config.ReadUsedConfig()
-	if err != nil {
-		utils.Fatalf("Read the used client conf failed, %v", err)
-	}
-	globalConfig.NodeRPC = usedrpc.NewUseRPC(globalConfig.UsedClient.Url)
+	//init config
+	config.Init(&GlobalConfig)
+
+	//init the share pool
+	cache = core.NewSharePool()
+	keypool = core.NewKeyPool()
 
 	//Check the committee account format && legality
-	addr := globalConfig.UserProfile.Address
-	if addr == "" || !common.IsHexAddress(addr) {
+	addr := GlobalConfig.UserProfile.Address
+	if addr == ""  {
 		utils.Fatalf("Please fill in correct committee address in conf")
 	} else {
-		globalConfig.Kstore = account.DefaultKeystore()
-		signer, err := account.CommitteeAccount(common.HexToAddress(addr), globalConfig.Kstore)
+		GlobalConfig.Kstore = account.DefaultKeystore(*wnode.ArgMoonet)
+		signer, err := account.CommitteeAccount(common.UmAddressToAddress(addr), GlobalConfig.Kstore)
 		if err != nil {
 			utils.Fatalf("Please import committee corresponding keystore file")
 		}
 
 		log.Warn("Please unlock the committee account")
 		log.Warn("Enter \"committee.unlock \"passwd\"\"")
-		fmt.Print("=====> ")
+		fmt.Print("Please input password >>> ")
 		select {
 		case passwd := <- account.CommitteePasswd:
-			err = globalConfig.Kstore.TimedUnlock(signer, passwd, 0)
+			err = GlobalConfig.Kstore.TimedUnlock(signer, passwd, 0)
 			if err != nil {
 				utils.Fatalf("Unlock the committee account failed %v", err)
 			}
 		}
 	}
-
-	log.Info("Usechain Committee Console Initialization Complete")
+	fmt.Println("Usechain Committee Console Initialization Complete")
+	return
 }
 
 //committee work main process
 func run() {
 	// Listening the network msg
 	go func(){
-		shamirkey.ShamirKeySharesListening(globalConfig.UserProfile)
+		shamirkey.ShamirKeySharesListening(&GlobalConfig, cache, keypool)
 	}()
 
+	// Process handle
 	for {
-		globalConfig.Workstat = config.GetState(globalConfig)
-		log.Debug("The process is in stage", "workStat", globalConfig.Workstat)
+		GlobalConfig.Workstat = config.GetState(GlobalConfig)
+		log.Debug("The process is in stage", "workStat", GlobalConfig.Workstat)
 
-		switch globalConfig.Workstat {
+		switch GlobalConfig.Workstat {
 		case config.NotCommittee:
 			utils.Fatalf("Not a legal committee address!")
 
 		case config.Selected:
 			log.Debug("selected, please confirm")
 			//Get committe id from contract
-			id, err := manager.GetSelfCommitteeID( globalConfig)
+			id, err := manager.GetSelfCommitteeID(GlobalConfig)
 			if err != nil || id == -1{
-				log.Error("Get certid failed", "err", err)
+				log.Error("Get CommitteeID failed", "err", err)
 			}
-			globalConfig.UserProfile.CommitteeID = id
-			if id == 0 {
-				globalConfig.UserProfile.Role = "Verifier"
-			}else {
-				globalConfig.UserProfile.Role = "Sharer"
-			}
-			config.UpdateProfile(globalConfig.UserProfile)
+			GlobalConfig.UserProfile.CommitteeID = id
+			GlobalConfig.UserProfile.Role = "Sharer"
+			config.UpdateProfile(GlobalConfig.UserProfile)
 
 			//Confirm & upload self asym key
-			manager.ConfirmAndKeyUpload(globalConfig)
+			manager.ConfirmAndKeyUpload(GlobalConfig)
 
 		case config.WaittingOther:
 			log.Debug("Just waitting!")
@@ -128,48 +115,43 @@ func run() {
 		case config.KeyGenerating:
 			log.Warn("KeyGenerating")
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
-			shamirkey.InitShamirCommitteeNumber(globalConfig)
+			shamirkey.InitShamirCommitteeNumber(GlobalConfig)
 
 			//Check whether get enough shares
 			go func(){
 				wg.Add(1)
 				defer wg.Done()
-				shamirkey.ShamirKeyShareCheck(&globalConfig)
+				keypool.ShamirKeyShareCheck(&GlobalConfig)
 			}()
 
 			//Request private share & self part generation
-			shamirkey.ShamirKeySharesGenerate(globalConfig.UserProfile.CommitteeID)
-			shamirkey.SendRequesuShares(globalConfig.UserProfile.CommitteeID)
+			shamirkey.ShamirKeySharesGenerate(GlobalConfig.UserProfile.CommitteeID, keypool)
+			shamirkey.SendRequestShares(GlobalConfig.UserProfile.CommitteeID)
 			wg.Wait()
 
 		case config.Verifying:
 			log.Debug("Verifying...")
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
-			shamirkey.InitShamirCommitteeNumber(globalConfig)
+			shamirkey.InitShamirCommitteeNumber(GlobalConfig)
 
-			switch globalConfig.UserProfile.Role {
-			case "Sharer":
-				log.Debug("Sharer start!")
-				shamirkey.AccountShareSharer(&globalConfig)
-			case "Verifier":
-				log.Debug("Verifier start")
-				shamirkey.AccountShareVerifer(&globalConfig)
-			default:
-				log.Debug("Unknown role")
-			}
+			// Verifying
+			go func(){
+				shamirkey.AccountVerifyProcess(&GlobalConfig, cache)
+			}()
+
+			creditNew.ScanCreditSystemAccount(&GlobalConfig, cache, core.CommitteeNodeList, core.CommitteeMax)
 
 		default:
 			utils.Fatalf("Unknown state")
 		}
 		time.Sleep(time.Second * 30)
 	}
-
 	return
 }
 
 //entry for committee working process
 func Start() {
-	initial()
+	Initial()
 	run()
 }
 

@@ -118,7 +118,7 @@ func Combine256Bit(shares []string) (*big.Int, error) {
 	// For each share...
 	for i := range shares {
 		// ...ensure that it is valid...
-		if IsValidShare256Bit(shares[i]) == false {
+		if IsValidShare(shares[i]) == false {
 			return big.NewInt(-1), ErrOneOfTheSharesIsInvalid
 		}
 
@@ -272,11 +272,23 @@ func CombineECDSAPubkey(shares []string) (*ecdsa.PublicKey, error) {
 
 	res := new(ecdsa.PublicKey)
 	res.Curve = crypto.S256()
-	if secretPubs[0].X == nil || secretPubs[1].X == nil {
-		return nil, ErrOneOfTheSharesIsInvalid
+	for i, secretPub := range secretPubs {
+		if secretPub.X == nil || secretPub.Y == nil {
+			return nil, ErrOneOfTheSharesIsInvalid
+		}
+		if i == 0 {
+			res.X = secretPubs[0].X
+			res.Y = secretPubs[0].Y
+		} else {
+			res.X, res.Y =  crypto.S256().Add(res.X, res.Y, secretPubs[i].X, secretPubs[i].Y)
+		}
 	}
-	res.X, res.Y = crypto.S256().Add(secretPubs[0].X, secretPubs[0].Y, secretPubs[1].X, secretPubs[1].Y)
-	//fmt.Println("the combined pubkey:", res)
+
+	//if secretPubs[0].X == nil || secretPubs[1].X == nil {
+	//	return nil, ErrOneOfTheSharesIsInvalid
+	//}
+	//res.X, res.Y = crypto.S256().Add(secretPubs[0].X, secretPubs[0].Y, secretPubs[1].X, secretPubs[1].Y)
+	////fmt.Println("the combined pubkey:", res)
 
 	// ...and return the result!
 	return res, nil
@@ -300,7 +312,7 @@ func VerifyPolynomial(share string, pubkeyArray []*ecdsa.PublicKey) bool {
 	prime, _ = big.NewInt(0).SetString(DefaultPrimeStr, 10)
 
 	// ...ensure that it is valid...
-	if IsValidShare256Bit(share) == false {
+	if IsValidShare(share) == false {
 		return false
 	}
 

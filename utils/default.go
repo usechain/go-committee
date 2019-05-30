@@ -10,3 +10,7 @@ import (
 func DefaultDataDir() string {
 	return filepath.Join(node.DefaultDataDir(), "committee") + "/"
 }
+
+func DefaultCommDataDir() string {
+	return node.DefaultDataDir() + "/"
+}

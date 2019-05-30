@@ -16,27 +16,19 @@
 
 // Package state provides a caching layer atop the Ethereum state trie.
 
-
 package state
 
 import (
-	"crypto/ecdsa"
-	"encoding/hex"
-	"errors"
 	"fmt"
-	"github.com/usechain/go-usechain/accounts/abi"
-	"github.com/usechain/go-usechain/commitee/committee/contract"
 	"github.com/usechain/go-usechain/common"
-	"github.com/usechain/go-usechain/common/hexutil"
 	"github.com/usechain/go-usechain/core/types"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/log"
 	"github.com/usechain/go-usechain/rlp"
 	"github.com/usechain/go-usechain/trie"
+	"math"
 	"math/big"
 	"sort"
-	"strconv"
-	"strings"
 	"sync"
 )
 
@@ -54,7 +46,7 @@ var (
 )
 
 const (
-	statDbEmpty = "0x0000000000000000000000000000000000000000000000000000000000000000"
+	StatDbEmpty = "0x0000000000000000000000000000000000000000000000000000000000000000"
 )
 
 // StateDBs within the ethereum protocol are used to store anything
@@ -62,7 +54,7 @@ const (
 // nested states. It's the general query interface to retrieve:
 // * Contracts
 // * Accounts
-type    StateDB struct {
+type StateDB struct {
 	db   Database
 	trie Trie
 
@@ -214,8 +206,98 @@ func (self *StateDB) GetNonce(addr common.Address) uint64 {
 	if stateObject != nil {
 		return stateObject.Nonce()
 	}
-
 	return 0
+}
+
+func (self *StateDB) GetTradePoints(addr common.Address) uint64 {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.TradePoints()
+	}
+	return 0
+}
+
+func (self *StateDB) AddTradePoints(addr common.Address, points uint64) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		currentRating := stateObject.TradePoints()
+		stateObject.SetTradePoints(currentRating + points)
+	}
+}
+
+func (self *StateDB) GetCertifications(addr common.Address) uint64 {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.Certifications()
+	}
+	return 0
+}
+
+func (self *StateDB) AddCertifications(addr common.Address, certifications uint64) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		currentCert := stateObject.Certifications()
+		stateObject.SetCertifications(currentCert + certifications)
+	}
+}
+
+func (self *StateDB) GetReviewPoints(addr common.Address) *big.Int {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.ReviewPoints()
+	}
+	return big.NewInt(0)
+}
+
+// reviewPoints could be negative
+func (self *StateDB) AddReviewPoints(addr common.Address, reviewPoints *big.Int) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		currentReview := stateObject.ReviewPoints()
+		stateObject.SetReviewPoints(big.NewInt(0).Add(currentReview, reviewPoints))
+	}
+}
+
+func (self *StateDB) GetRewardPoints(addr common.Address) *big.Int {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.RewardPoints()
+	}
+	return big.NewInt(0)
+}
+
+// rewardPoints could be negative
+func (self *StateDB) AddRewardPoints(addr common.Address, rewardPoints *big.Int) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		currentReward := stateObject.RewardPoints()
+		stateObject.SetRewardPoints(big.NewInt(0).Add(currentReward, rewardPoints))
+	}
+}
+
+func (self *StateDB) IsCertificationVerified(addr common.Address, flag uint64) bool {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		currentCert := stateObject.Certifications()
+		n := new(big.Int).Rsh(big.NewInt(int64(currentCert)), uint(math.Log2(float64(flag)))) // n >> log2flag e.g if flag=4 then n >> 2
+		return new(big.Int).Mod(n, big.NewInt(2)).Cmp(big.NewInt(1)) == 0                     // if n%2 == 1 then flag is verified
+	}
+	return false
+}
+
+func (self *StateDB) SetAccountLock(addr common.Address, lock *common.Lock) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetAccountLock(lock)
+	}
+}
+
+func (self *StateDB) GetAccountLock(addr common.Address) *common.Lock {
+	stateObject := self.getStateObject(addr)
+	if stateObject != nil {
+		return stateObject.Lock()
+	}
+	return new(common.Lock)
 }
 
 func (self *StateDB) GetCode(addr common.Address) []byte {
@@ -250,13 +332,14 @@ func (self *StateDB) GetCodeHash(addr common.Address) common.Hash {
 }
 
 func (self *StateDB) GetState(a common.Address, b common.Hash) common.Hash {
+	self.lock.Lock()
+	defer self.lock.Unlock()
 	stateObject := self.getStateObject(a)
 	if stateObject != nil {
 		return stateObject.GetState(self.db, b)
 	}
 	return common.Hash{}
 }
-
 
 // Database retrieves the low level database supporting the lower level trie ops.
 func (self *StateDB) Database() Database {
@@ -298,6 +381,11 @@ func (self *StateDB) AddBalance(addr common.Address, amount *big.Int) {
 func (self *StateDB) SubBalance(addr common.Address, amount *big.Int) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
+
+		// lock := stateObject.Lock()
+		// if lock.Permission == 1 && lock.LockedBalance.Cmp(new(big.Int).Sub(stateObject.Balance(), amount)) <= 0 {
+		// }
+
 		stateObject.SubBalance(amount)
 	}
 }
@@ -306,6 +394,20 @@ func (self *StateDB) SetBalance(addr common.Address, amount *big.Int) {
 	stateObject := self.GetOrNewStateObject(addr)
 	if stateObject != nil {
 		stateObject.SetBalance(amount)
+	}
+}
+
+func (self *StateDB) SetTradePoints(addr common.Address, credit uint64) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetTradePoints(credit)
+	}
+}
+
+func (self *StateDB) SetCertifications(addr common.Address, certification uint64) {
+	stateObject := self.GetOrNewStateObject(addr)
+	if stateObject != nil {
+		stateObject.SetCertifications(certification)
 	}
 }
 
@@ -424,6 +526,11 @@ func (self *StateDB) createObject(addr common.Address) (newobj, prev *stateObjec
 	prev = self.getStateObject(addr)
 	newobj = newObject(self, addr, Account{}, self.MarkStateObjectDirty)
 	newobj.setNonce(0) // sets the object to dirty
+	newobj.setTradePoints(0)
+	newobj.setCertifications(0)
+	newobj.setAccountLock(new(common.Lock))
+	newobj.setReviewPoints(big.NewInt(0))
+	newobj.setRewardPoints(big.NewInt(0))
 	if prev == nil {
 		self.journal = append(self.journal, createObjectChange{account: &addr})
 	} else {
@@ -511,136 +618,6 @@ func (self *StateDB) Snapshot() int {
 	return id
 }
 
-func (self *StateDB) checkAuthenticateStat(_key []byte) int {
-	keyString := "0x" + hex.EncodeToString(_key)
-
-	_addr := common.HexToAddress(common.AuthenticationContractAddressString)
-	log.Debug("GetstorageAt, address:", _addr.Hex(), "key", keyString)
-	res := self.GetState(_addr, common.HexToHash(keyString))
-	log.Debug("The db get result:", "key",res.Hex())
-
-	level, err := strconv.Atoi(res.Hex()[2:])
-	if err != nil {
-		log.Debug("The db result parse error:", err)
-		return 0
-	}
-	return level
-}
-
-func (self *StateDB) isOTAConfirmed(_addr common.Address) bool {
-	key := contract.ReadOneTimeAddressDetail(_addr.Hex()[2:])
-	//log.Info("isOTAConfirmed", "key", contract.ReadOneTimeAddressDetail(_addr.Hex()[2:]))
-
-	res := self.GetState(common.HexToAddress(common.AuthenticationContractAddressString), common.HexToHash(key))
-	//log.Info("The db get result:", "key", res.Hex())
-
-	return res.Hex() != statDbEmpty
-}
-
-func (self *StateDB) isMultiAccountConfirmed(_addr common.Address) bool {
-	key := contract.ReadCertificateAddr(_addr.Hex()[2:])
-	res := self.GetState(common.HexToAddress(common.AuthenticationContractAddressString), common.HexToHash(key))
-
-	return res.Hex() != statDbEmpty
-}
-
-func (self *StateDB) IsCommittee(_addr common.Address) bool {
-	key := contract.ReadIsCommitteeAddr(_addr.Hex()[2:])
-	res := self.GetState(common.HexToAddress(common.AuthenticationContractAddressString), common.HexToHash(key))
-
-	return res.Hex() != statDbEmpty
-}
-
-//TODO:
-func (self *StateDB) CheckAddrAuthenticateStat(_addr common.Address) int {
-
-
-	if self.isMultiAccountConfirmed(_addr) || self.isOTAConfirmed(_addr) {
-		return 1
-	}
-
-	return 0
-}
-
-
-func (self *StateDB) CheckMultiAccountSig(tx *types.Transaction, _addType int, _from common.Address) error {
-	usechainABI, err := abi.JSON(strings.NewReader(common.UsechainABI))
-	if err != nil {
-		log.Error("usechainABI error")
-	}
-
-	method, exist := usechainABI.Methods["storeMainUserCert"]
-	if !exist {
-		log.Error("method storeMainUserCert not found")
-	}
-
-	InputDataInterface,err :=method.Inputs.UnpackABI(tx.Data()[4:])
-	if err !=nil {
-		fmt.Println("method.Inputs: ",err)
-		return err
-	}
-
-	var inputData []string
-	for _, param := range InputDataInterface {
-		inputData = append(inputData, param.(string))
-	}
-
-	ringsign := inputData[0]
-	//pub := inputData[1]
-	pubMirror := inputData[2]
-
-
-	msg:=hexutil.Encode(_from[:])
-	//log.Info("Ringsign message","msg",msg)
-	//log.Info("Ringsign message","ringsig",ringsign)
-
-	ringRes:=crypto.VerifyRingSign(msg, ringsign)
-	if ringRes == false {
-		return errors.New("verify ring signature error")
-	}
-	//log.Info("Ringsign message","ringsig self-verification",ringRes)
-
-	err, pubKeys, pubMirrorKey, _, _ := crypto.DecodeRingSignOut(ringsign)
-	if err != nil {
-		log.Error("The  ringSig decode failed")
-		return err
-	}
-
-	fmt.Println(pubKeys)
-	fmt.Println(crypto.FromECDSAPub(pubMirrorKey))
-	fmt.Println(pubMirror)
-
-	if  common.ToHex((crypto.FromECDSAPub(pubMirrorKey))) != pubMirror {
-		log.Error("The pubMirror doesn't match with ringSig")
-		return errors.New("the pubMirror doesn't match with ringSig")
-	}
-
-	if !self.CheckRingSigPubKey(_addType, pubKeys) {
-		log.Error("The ringSig pubkey is illegal!")
-		return errors.New("the ringSig pubkey is illegal")
-	}
-
-	return nil
-}
-
-
-func (self *StateDB) CheckRingSigPubKey(addType int, pubKeys []*ecdsa.PublicKey) bool {
-	for i := range pubKeys {
-		address := crypto.PubkeyToAddress(*pubKeys[i])
-
-		if addType == common.MainAddress {
-			if !self.isOTAConfirmed(address) {
-				return false
-			}
-		}else {
-			if !self.isMultiAccountConfirmed(address) && !self.isOTAConfirmed(address) {
-				return false
-			}
-		}
-	}
-	return true
-}
-
 // RevertToSnapshot reverts all state changes made since the given revision.
 func (self *StateDB) RevertToSnapshot(revid int) {
 	// Find the snapshot in the stack of valid snapshots.
@@ -719,7 +696,6 @@ func (s *StateDB) DeleteSuicides() {
 		delete(s.stateObjectsDirty, addr)
 	}
 }
-
 
 func (s *StateDB) clearJournalAndRefund() {
 	s.journal = nil

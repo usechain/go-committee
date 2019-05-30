@@ -108,12 +108,24 @@ type Account struct {
 	Balance  *big.Int
 	Root     common.Hash // merkle root of the storage trie
 	CodeHash []byte
+
+	Lock           *common.Lock
+	TradePoints    uint64   // user's trade points
+	Certifications uint64   // user's certifications implements by bits
+	ReviewPoints   *big.Int // user's review points
+	RewardPoints   *big.Int // user's rewards and punishments points, operated by committee
 }
 
 // newObject creates a state object.
 func newObject(db *StateDB, address common.Address, data Account, onDirty func(addr common.Address)) *stateObject {
 	if data.Balance == nil {
 		data.Balance = new(big.Int)
+	}
+	if data.ReviewPoints == nil {
+		data.ReviewPoints = new(big.Int)
+	}
+	if data.RewardPoints == nil {
+		data.RewardPoints = new(big.Int)
 	}
 	if data.CodeHash == nil {
 		data.CodeHash = emptyCodeHash
@@ -364,6 +376,23 @@ func (self *stateObject) setCode(codeHash common.Hash, code []byte) {
 	}
 }
 
+func (self *stateObject) SetAccountLock(lock *common.Lock) {
+	self.db.journal = append(self.db.journal, lockChange{
+		account: &self.address,
+		prev:    self.data.Lock,
+	})
+
+	self.setAccountLock(lock)
+}
+
+func (self *stateObject) setAccountLock(lock *common.Lock) {
+	self.data.Lock = lock
+	if self.onDirty != nil {
+		self.onDirty(self.Address())
+		self.onDirty = nil
+	}
+}
+
 func (self *stateObject) SetNonce(nonce uint64) {
 	self.db.journal = append(self.db.journal, nonceChange{
 		account: &self.address,
@@ -380,6 +409,73 @@ func (self *stateObject) setNonce(nonce uint64) {
 	}
 }
 
+func (self *stateObject) SetCertifications(certification uint64) {
+	self.db.journal = append(self.db.journal, certificationChange{
+		account: &self.address,
+		prev:    self.data.Certifications,
+	})
+
+	self.setCertifications(certification)
+}
+
+func (self *stateObject) setCertifications(certification uint64) {
+	self.data.Certifications = certification
+	if self.onDirty != nil {
+		self.onDirty(self.Address())
+		self.onDirty = nil
+	}
+}
+
+func (self *stateObject) SetTradePoints(credit uint64) {
+	self.db.journal = append(self.db.journal, creditChange{
+		account: &self.address,
+		prev:    self.data.TradePoints,
+	})
+
+	self.setTradePoints(credit)
+}
+
+func (self *stateObject) setTradePoints(credit uint64) {
+	self.data.TradePoints = credit
+	if self.onDirty != nil {
+		self.onDirty(self.Address())
+		self.onDirty = nil
+	}
+}
+
+func (self *stateObject) SetReviewPoints(review *big.Int) {
+	self.db.journal = append(self.db.journal, reviewChange{
+		account: &self.address,
+		prev:    self.data.ReviewPoints,
+	})
+
+	self.setReviewPoints(review)
+}
+
+func (self *stateObject) setReviewPoints(review *big.Int) {
+	self.data.ReviewPoints = review
+	if self.onDirty != nil {
+		self.onDirty(self.Address())
+		self.onDirty = nil
+	}
+}
+
+func (self *stateObject) SetRewardPoints(reward *big.Int) {
+	self.db.journal = append(self.db.journal, rewardChange{
+		account: &self.address,
+		prev:    self.data.RewardPoints,
+	})
+	self.setRewardPoints(reward)
+}
+
+func (self *stateObject) setRewardPoints(reward *big.Int) {
+	self.data.RewardPoints = reward
+	if self.onDirty != nil {
+		self.onDirty(self.Address())
+		self.onDirty = nil
+	}
+}
+
 func (self *stateObject) CodeHash() []byte {
 	return self.data.CodeHash
 }
@@ -390,6 +486,26 @@ func (self *stateObject) Balance() *big.Int {
 
 func (self *stateObject) Nonce() uint64 {
 	return self.data.Nonce
+}
+
+func (self *stateObject) TradePoints() uint64 {
+	return self.data.TradePoints
+}
+
+func (self *stateObject) Certifications() uint64 {
+	return self.data.Certifications
+}
+
+func (self *stateObject) Lock() *common.Lock {
+	return self.data.Lock
+}
+
+func (self *stateObject) ReviewPoints() *big.Int {
+	return self.data.ReviewPoints
+}
+
+func (self *stateObject) RewardPoints() *big.Int {
+	return self.data.RewardPoints
 }
 
 // Never called, but must be present to allow stateObject to be used

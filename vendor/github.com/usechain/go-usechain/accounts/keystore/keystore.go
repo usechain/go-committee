@@ -35,7 +35,6 @@ import (
 
 	"github.com/usechain/go-usechain/accounts"
 	"github.com/usechain/go-usechain/common"
-	"github.com/usechain/go-usechain/common/hexutil"
 	"github.com/usechain/go-usechain/common/math"
 
 	"github.com/usechain/go-usechain/core/types"
@@ -286,9 +285,9 @@ func (ks *KeyStore) SignTx(a accounts.Account, tx *types.Transaction, chainID *b
 		return nil, ErrLocked
 	}
 	// Depending on the presence of the chain ID, sign with EIP155 or homestead
-	//if chainID != nil {
-	//	return types.SignTx(tx, types.NewEIP155Signer(chainID), unlockedKey.PrivateKey)
-	//}
+	if chainID != nil {
+		return types.SignTx(tx, types.NewEIP155Signer(chainID), unlockedKey.PrivateKey)
+	}
 	return types.SignTx(tx, types.HomesteadSigner{}, unlockedKey.PrivateKey)
 }
 
@@ -314,9 +313,9 @@ func (ks *KeyStore) SignTxWithPassphrase(a accounts.Account, passphrase string, 
 	defer zeroKey(key.PrivateKey)
 
 	// Depending on the presence of the chain ID, sign with EIP155 or homestead
-	//if chainID != nil {
-	//	return types.SignTx(tx, types.NewEIP155Signer(chainID), key.PrivateKey)
-	//}
+	if chainID != nil {
+		return types.SignTx(tx, types.NewEIP155Signer(chainID), key.PrivateKey)
+	}
 	return types.SignTx(tx, types.HomesteadSigner{}, key.PrivateKey)
 }
 
@@ -335,17 +334,6 @@ func (ks *KeyStore) Lock(addr common.Address) error {
 		ks.mu.Unlock()
 	}
 	return nil
-}
-
-// Check the account whether unlocked, true for unlocked, false for locked
-func (ks *KeyStore) Status(a accounts.Account) bool {
-	ks.mu.Lock()
-	defer ks.mu.RUnlock()
-
-	if _, ok := ks.unlocked[a.Address]; ok {
-		return true
-	}
-	return false
 }
 
 // TimedUnlock unlocks the given account with the passphrase. The account
@@ -524,33 +512,29 @@ func zeroKey(k *ecdsa.PrivateKey) {
 }
 
 // GetAprivBaddress get account's PublicKey combine with B(commitee publickey)
-func (ks *KeyStore) GetAprivBaddress(a accounts.Account) (common.ABaddress, *ecdsa.PrivateKey, error) {
+func (ks *KeyStore) GetApriv(a accounts.Account) (*ecdsa.PrivateKey, error) {
 	ks.mu.RLock()
 	defer ks.mu.RUnlock()
 
 	unlockedKey, found := ks.unlocked[a.Address]
 
 	if !found {
-		return common.ABaddress{}, nil, ErrLocked
+		return nil, ErrLocked
 	}
 
-	AprivKey := unlockedKey.PrivateKey
-	ret := GenerateBaseABaddress(&AprivKey.PublicKey)
-	return *ret, AprivKey, nil
+	Apriv := unlockedKey.PrivateKey
+	return Apriv, nil
 }
 
-// B is commitee's publickey
-var B = "0x04e524ec8293017832c2d1e29de5d4b857d15087646b88846fb92f749551e19fa1da92bcb54407cf6aac98670dc2bbb4b4043641a421d74a2d7e5535cd6d539f75"
-
-// GenerateBaseABaddress combine A pubkey with B
-func GenerateBaseABaddress(A *ecdsa.PublicKey) *common.ABaddress {
-	BTObyte, _ := hexutil.Decode(B)
-	Bpub := crypto.ToECDSAPub(BTObyte)
-	var tmp common.ABaddress
-	copy(tmp[:33], ECDSAPKCompression(A))
-	copy(tmp[33:], ECDSAPKCompression(Bpub))
-	return &tmp
-}
+// GenerateCombineAddress combine A pubkey with B
+//func GenerateCombineAddress(A *ecdsa.PublicKey) *common.SubAddress {
+//	BToByte, _ := hexutil.Decode(B)
+//	Bpub := crypto.ToECDSAPub(BToByte)
+//	var tmp common.SubAddress
+//	copy(tmp[:33], ECDSAPKCompression(A))
+//	copy(tmp[33:], ECDSAPKCompression(Bpub))
+//	return &tmp
+//}
 
 // ECDSAPKCompression serializes a public key in a 33-byte compressed format from btcec
 func ECDSAPKCompression(p *ecdsa.PublicKey) []byte {
@@ -565,30 +549,27 @@ func ECDSAPKCompression(p *ecdsa.PublicKey) []byte {
 	return b
 }
 
-// NewABaccount generates a new key and stores it into the key directory, encrypting it with the passphrase.
-func (ks *KeyStore) NewABaccount(A accounts.Account, passphrase string) (accounts.Account, common.ABaddress, error) {
-
-	var abBaseAddr common.ABaddress
-	abBaseAddr, AprivKey, err := ks.GetAprivBaddress(A)
-
-	if err != nil || len(abBaseAddr) != common.ABaddressLength {
-		log.Error("unlock main account error:", "err", err)
-		return accounts.Account{}, common.ABaddress{}, err
-	}
-
-	key, account, err := storeNewABKey(ks.storage, abBaseAddr, AprivKey, passphrase)
+// NewSubAccount generates a new key and stores it into the key directory, encrypting it with the passphrase.
+func (ks *KeyStore) NewSubAccount(A accounts.Account, passphrase string, committeePub string) (accounts.Account, common.SubAddress, error) {
+	Apriv, err := ks.GetApriv(A)
 	if err != nil {
-		log.Error("NewABaccount err: ", "err", err)
-		return accounts.Account{}, common.ABaddress{}, err
+		log.Error("Get main account private key error:", "err", err)
+		return accounts.Account{}, common.SubAddress{}, err
 	}
 
-	ABaddress := key.ABaddress
+	key, account, err := storeNewSubKey(ks.storage, committeePub, Apriv, passphrase)
+	if err != nil {
+		log.Error("NewSubAccount err: ", "err", err)
+		return accounts.Account{}, common.SubAddress{}, err
+	}
+
+	SubAddress := key.SubAddress
 
 	// Add the account to the cache immediately rather
 	// than waiting for file system notifications to pick it up.
 	ks.cache.add(account)
 	ks.refreshWallets()
-	return account, ABaddress, nil
+	return account, SubAddress, nil
 }
 
 //Get account's pulick key from keystore
@@ -606,6 +587,19 @@ func (ks *KeyStore) GetPublicKey(a accounts.Account) (string, error) {
 	return pub, nil
 }
 
+// TODO: merge this function to the GetPublicKey function
+func (ks *KeyStore) GetPrivateKey(a accounts.Account) (*ecdsa.PrivateKey, error) {
+	ks.mu.RLock()
+	defer ks.mu.RUnlock()
+
+	unlockedKey, found := ks.unlocked[a.Address]
+
+	if !found {
+		return nil, ErrLocked
+	}
+	return unlockedKey.PrivateKey, nil
+}
+
 //Get account's ASkey from keystore
 func (ks *KeyStore) GetABaddr(a accounts.Account) (string, error) {
 	ks.mu.RLock()
@@ -621,30 +615,8 @@ func (ks *KeyStore) GetABaddr(a accounts.Account) (string, error) {
 	if err != nil {
 		return "", ErrLocked
 	}
-	abAddr := ksen.ABaddress
+	abAddr := ksen.SubAddress
 
-	ABaddress := hex.EncodeToString(abAddr[:])
-	return ABaddress, nil
-}
-
-func (ks *KeyStore) GetRingSignInfo(a accounts.Account, from common.Address) (string, string, string) {
-	ks.mu.RLock()
-	defer ks.mu.RUnlock()
-
-	unlockedKey, found := ks.unlocked[a.Address]
-	if !found {
-		return "", "", ""
-	}
-
-	AprivKey := unlockedKey.PrivateKey
-	privateKey := hexutil.Encode(AprivKey.D.Bytes())
-
-	//ring signature message
-	addr := hexutil.Encode(from[:])
-
-	msg, _ := hexutil.Decode(addr)
-	msg1 := crypto.Keccak256(msg)
-	msg2 := hexutil.Encode(msg1)
-
-	return privateKey, addr, msg2
+	SubAddress := hex.EncodeToString(abAddr[:])
+	return SubAddress, nil
 }

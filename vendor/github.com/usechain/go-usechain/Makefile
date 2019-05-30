@@ -16,11 +16,6 @@ used:
 	@echo "Done building."
 	@echo "Run \"$(GOBIN)/used\" to launch used."
 
-swarm:
-	build/env.sh go run build/ci.go install ./cmd/swarm
-	@echo "Done building."
-	@echo "Run \"$(GOBIN)/swarm\" to launch swarm."
-
 all:
 	build/env.sh go run build/ci.go install
 	@build/usechain.sh
@@ -39,7 +34,7 @@ test: all
 # build/env.sh go run build/ci.go test
 	build/env.sh go test -v ./crypto
 	build/env.sh go test -v ./accounts/keystore
-	build/env.sh go test -v ./accounts/cacertreg
+# build/env.sh go test -v ./accounts/ca
 
 clean:
 	rm -fr build/_workspace/pkg/ $(GOBIN)/*

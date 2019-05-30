@@ -17,11 +17,14 @@
 // Package common contains various helper functions.
 package common
 
-import "encoding/hex"
+import (
+	"encoding/binary"
+	"encoding/hex"
+)
 
 const (
-	zero  = byte('0')
-	one   = byte('1')
+	zero = byte('0')
+	one  = byte('1')
 )
 
 func ToHex(b []byte) string {
@@ -45,17 +48,18 @@ func FromHex(s string) []byte {
 	return Hex2Bytes(s)
 }
 
-
 func ByteToBinaryString(data byte) (str string) {
 	var a byte
-	for i:=0; i < 8; i++ {
+	for i := 0; i < 8; i++ {
 		a = data
 		data <<= 1
 		data >>= 1
 
-		switch (a) {
-		case data: str += "0"
-		default: str += "1"
+		switch a {
+		case data:
+			str += "0"
+		default:
+			str += "1"
 		}
 
 		data <<= 1
@@ -66,14 +70,16 @@ func ByteToBinaryString(data byte) (str string) {
 func ByteToBinaryBytes(data byte) (bytes []byte) {
 	var str string
 	var a byte
-	for i:=0; i < 8; i++ {
+	for i := 0; i < 8; i++ {
 		a = data
 		data <<= 1
 		data >>= 1
 
-		switch (a) {
-		case data: str += "0"
-		default: str += "1"
+		switch a {
+		case data:
+			str += "0"
+		default:
+			str += "1"
 		}
 
 		data <<= 1
@@ -199,4 +205,14 @@ func appendBinaryString(bs []byte, b byte) []byte {
 		b <<= 1
 	}
 	return bs
+}
+
+func Uint64ToBytes(num uint64) []byte {
+	var buf = make([]byte, 8)
+	binary.BigEndian.PutUint64(buf, num)
+	return buf
+}
+
+func BytesToUint64(buf []byte) uint64 {
+	return binary.BigEndian.Uint64(buf)
 }

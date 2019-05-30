@@ -17,9 +17,14 @@
 package core
 
 import (
+	"errors"
+	"math"
+	"math/big"
+
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/consensus"
 	"github.com/usechain/go-usechain/consensus/misc"
+	"github.com/usechain/go-usechain/contracts/manager"
 	"github.com/usechain/go-usechain/core/state"
 	"github.com/usechain/go-usechain/core/types"
 	"github.com/usechain/go-usechain/core/vm"
@@ -65,8 +70,101 @@ func (p *StateProcessor) Process(block *types.Block, statedb *state.StateDB, cfg
 	if p.config.DAOForkSupport && p.config.DAOForkBlock != nil && p.config.DAOForkBlock.Cmp(block.Number()) == 0 {
 		misc.ApplyDAOHardFork(statedb)
 	}
+
 	// Iterate over and process the individual transactions
+	p.bc.committeeCnt = manager.GetCommitteeCount(statedb)
+	if header.IsCheckPoint.Int64() == 1 {
+		txs := block.Transactions()
+		if float64(txs.Len()) < math.Ceil(float64(p.bc.committeeCnt)*2/3) {
+			err := errors.New("checkpoint block should contain more than three-seconds voter")
+			return nil, nil, 0, err
+		}
+		hash := common.BytesToHash(txs[0].Data()[:common.HashLength])
+		height := common.BytesToUint64(txs[0].Data()[common.HashLength : common.HashLength+8])
+		index := common.BytesToUint64(txs[0].Data()[common.HashLength+8:])
+		count := 1
+		for i := 1; i < txs.Len(); i++ {
+			if hash != common.BytesToHash(txs[i].Data()[:common.HashLength]) {
+				err := errors.New("checkpoint block should contain same hash in txs")
+				return nil, nil, 0, err
+			}
+			if height != common.BytesToUint64(txs[i].Data()[common.HashLength:common.HashLength+8]) {
+				err := errors.New("checkpoint block should contain same height in txs")
+				return nil, nil, 0, err
+			}
+			if index != common.BytesToUint64(txs[i].Data()[common.HashLength+8:]) {
+				err := errors.New("checkpoint block should contain same index in txs")
+				return nil, nil, 0, err
+			}
+			count++
+		}
+		if float64(count) < math.Ceil(float64(p.bc.committeeCnt)*2/3) {
+			err := errors.New("checkpoint block should contain more than three-seconds voter with same hashes")
+			return nil, nil, 0, err
+		}
+	}
+
+	// check the txs
 	for i, tx := range block.Transactions() {
+		if header.IsCheckPoint.Int64() == 1 && tx.Flag() == types.TxNormal {
+			err := errors.New("checkpoint block can't package common transactions")
+			return nil, nil, 0, err
+		}
+		if header.IsCheckPoint.Int64() == 0 && tx.Flag() == types.TxPbft {
+			err := errors.New("common block can't package checkpoint transactions")
+			return nil, nil, 0, err
+		}
+
+		///TODO:all transaction should be identified by Tx.flag, with switch
+		msg, err2 := tx.AsMessage(types.MakeSigner(p.config, header.Number))
+		if err2 != nil {
+			return nil, nil, 0, err2
+		}
+		sender := msg.From()
+		switch tx.Flag() {
+		case types.TxPbft:
+			// If it's vote transaction, verify & return
+			err := ValidatePbftTx(statedb, big.NewInt(block.Number().Int64()-1), false, 0, tx, common.Address(sender))
+			if err != nil {
+				return nil, nil, 0, err
+			}
+		case types.TxLock:
+			if !manager.IsCommittee(statedb, msg.From()) {
+				return nil, nil, 0, ErrLockSender
+			}
+
+			if lock := statedb.GetAccountLock(sender); !lock.Expired() {
+				if lock.Permission == 1 {
+					err := errors.New("transaction send from locked account")
+					return nil, nil, 0, err
+				}
+				if lock.Permission == 2 && statedb.GetBalance(sender).Cmp(new(big.Int).Add(tx.Cost(), lock.LockedBalance)) < 0 {
+					err := errors.New("can not sending locked balance")
+					return nil, nil, 0, err
+				}
+			}
+		case types.TxComment:
+			err := ValidateCommentTx(p.bc, tx, sender)
+			if err != nil {
+				return nil, nil, 0, err
+			}
+		case types.TxReward:
+			err := ValidateRewardTx(statedb, tx, sender)
+			if err != nil {
+				return nil, nil, 0, err
+			}
+		case types.TxMain:
+			chainid := p.config.ChainId
+			err := tx.CheckCertLegality(common.Address(sender), chainid)
+			if err != nil {
+				return nil, nil, 0, err
+			}
+		case types.TxInherit:
+			if !manager.IsCommittee(statedb, msg.From()) {
+				return nil, nil, 0, ErrInheritSender
+			}
+		}
+
 		statedb.Prepare(tx.Hash(), block.Hash(), i)
 		receipt, _, err := ApplyTransaction(p.config, p.bc, nil, gp, statedb, header, tx, usedGas, cfg)
 		if err != nil {

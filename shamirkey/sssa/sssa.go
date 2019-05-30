@@ -20,12 +20,13 @@ import (
 	"errors"
 	"math/big"
 	"github.com/usechain/go-committee/utils"
-	"fmt"
+	"github.com/usechain/go-usechain/log"
 )
 
 var (
 	ErrCannotRequireMoreShares = errors.New("cannot require more shares then existing")
 	ErrOneOfTheSharesIsInvalid = errors.New("one of the shares is invalid")
+	ErrInvalidPubkey = errors.New("Invalid publick key")
 )
 
 /**
@@ -220,9 +221,8 @@ func Combine(shares []string) (string, error) {
 func IsValidShare(candidate string) bool {
 	// Set constant prime across the package
 	prime, _ = big.NewInt(0).SetString(DefaultPrimeStr, 10)
-
 	if (len(candidate)%88 != 0 && len(candidate)%132 != 0) || len(candidate) == 0{
-		fmt.Println("length error")
+		log.Error("Candidate length error")
 		return false
 	}
 

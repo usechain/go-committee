@@ -17,17 +17,12 @@
 package main
 
 import (
-	//"os"
-	//"github.com/usechain/go-usechain/log"
-	"github.com/usechain/go-committee/console"
 	"github.com/usechain/go-committee/node"
 	"github.com/usechain/go-committee/wnode"
+	"github.com/usechain/go-committee/console"
 )
 
 func main() {
-	//log.Root().SetHandler(log.LvlFilterHandler(log.LvlInfo, log.StreamHandler(os.Stdout, log.TerminalFormat(true))))
-	con := console.New()
-
 	// Start whisper node
 	go wnode.Wnode()
 
@@ -35,5 +30,6 @@ func main() {
 	go node.Start()
 
 	// Start console service
+	con := console.New(&node.GlobalConfig)
 	con.Start()
 }

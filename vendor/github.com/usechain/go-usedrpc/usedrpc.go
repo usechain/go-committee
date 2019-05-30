@@ -1,3 +1,19 @@
+// Copyright 2018 The go-usedrpc Authors
+// This file is part of the go-usedrpc library.
+//
+// The go-usedrpc library is free software: you can redistribute it and/or modify
+// it under the terms of the GNU Lesser General Public License as published by
+// the Free Software Foundation, either version 3 of the License, or
+// (at your option) any later version.
+//
+// The go-usedrpc library is distributed in the hope that it will be useful,
+// but WITHOUT ANY WARRANTY; without even the implied warranty of
+// MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+// GNU Lesser General Public License for more details.
+//
+// You should have received a copy of the GNU Lesser General Public License
+// along with the go-usedrpc library. If not, see <http://www.gnu.org/licenses/>.
+
 package usedrpc
 
 import (
@@ -175,16 +191,42 @@ func (rpc *UseRPC) NetPeerCount() (int, error) {
 // UseQueryAddress returns the authentication state of the address
 func (rpc *UseRPC) UseQueryAddress(address, block string) (bool, error) {
 	var response int
-	err := rpc.call("use_queryAddr", &response, address, block)
+	err := rpc.call("eth_queryAddr", &response, address, block)
 	return response == 1, err
 }
 
 // UseIsMiner returns true if the coinbase is a miner
 func (rpc *UseRPC) UseIsMiner(address, block string) (bool, error) {
 	var response int
-	err := rpc.call("use_minerAddr", &response, address, block)
+	err := rpc.call("eth_isMiner", &response, address, block)
 	return response == 1, err
 }
+
+// UseIsPunishedMiner returns true if the coinbase is a punished miner
+func (rpc *UseRPC) UseIsPunishedMiner(address, block string) (bool, error) {
+	var response int
+	err := rpc.call("eth_isPunishedMiner", &response, address, block)
+	return response == 1, err
+}
+
+func (rpc *UseRPC) UnlockAccount(address, pass string) (bool, error) {
+	var res bool
+	err := rpc.call("personal_unlockAccount", &res, address, pass, 0)
+	return res, err
+}
+
+func (rpc *UseRPC) MinerStart() (error) {
+	var res interface{}
+	err := rpc.call("miner_start", &res, 0)
+	return  err
+}
+
+func (rpc *UseRPC) GetCertifications(address string) (interface{}, error) {
+	var res interface{}
+	err := rpc.call("eth_getCertifications", &res, address , "latest")
+	return res, err
+}
+
 
 // UseMinerRegister send a transaction to minerList contract to get registered.
 // The param "to" & "data" in tx are useless
@@ -206,21 +248,21 @@ func (rpc *UseRPC) UseMinerUnRegister(transaction T) (string, error) {
 // certificate & key signature
 func (rpc *UseRPC) UseSendOneTimeTransaction(transaction T) (string, error) {
 	var hash string
-	err := rpc.call("use_sendOneTimeTransaction", &hash, transaction)
+	err := rpc.call("eth_sendOneTimeTransaction", &hash, transaction)
 	return hash, err
 }
 
 // UseSendMainTransaction for the main account authentication, send Tx with OTA ringSig
 func (rpc *UseRPC) UseSendMainTransaction(transaction T, parent string, state string) (string, error) {
 	var hash string
-	err := rpc.call("use_sendMainTransaction", &hash,  parent, transaction, state)
+	err := rpc.call("eth_sendMainTransaction", &hash,  parent, transaction, state)
 	return hash, err
 }
 
 // UseSendSubTransaction for the sub account authentication, send Tx with any verified account ringsig
 func (rpc *UseRPC) UseSendSubTransaction(transaction T, parent string, state string) (string, error) {
 	var hash string
-	err := rpc.call("use_sendSubTransaction", &hash,  parent, transaction, state)
+	err := rpc.call("eth_sendSubTransaction", &hash,  parent, transaction, state)
 	return hash, err
 }
 
@@ -396,6 +438,13 @@ func (rpc *UseRPC) UseSendTransaction(transaction T) (string, error) {
 	var hash string
 
 	err := rpc.call("eth_sendTransaction", &hash, transaction)
+	return hash, err
+}
+
+func (rpc *UseRPC) SendCreditRegisterTransaction(transaction T, enc bool) (string, error) {
+	var hash string
+
+	err := rpc.call("eth_sendCreditRegisterTransaction", &hash, transaction, enc)
 	return hash, err
 }
 
