@@ -132,7 +132,7 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 	//coinbaseUM := common.AddressToBase58Address(common.HexToAddress(coinbase)).String()
 	//xAddr := common.UmAddressToAddress(coinbase)
 	//nonce, err := node.UseGetTransactionCount(common.ToHex(xAddr[:]), "latest")
-	nonce, err := node.UseGetTransactionCount(coinbase, "latest")
+	nonce, err := node.UseGetTransactionCount(coinbase, "pending")
 	log.Info("nonce(latest)", "nonce", nonce)
 	if err != nil {
 		log.Error("Get nonce failed", "error", err)
