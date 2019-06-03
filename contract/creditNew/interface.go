@@ -144,7 +144,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
 				if err != nil || pubToAddr != mainAddr {
 					verifiedData := core.VerifiedMain{
-						Addr: pubToAddr,
+						Addr: mainAddr,
 						RegisterID: big.NewInt(mainID.Int64()),
 						Hashkey: common.HexToHash(hashKeyString),
 						Status: big.NewInt(4),
@@ -152,8 +152,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 
 					//Confirm stat with the contract
 					pool.AddVerifiedMain(verifiedData)
-					
-					log.Error("CheckUserRegisterCert failed", "err", err)
 					return
 				}
 
