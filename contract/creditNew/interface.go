@@ -136,14 +136,15 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				}
 				log.Debug("Get public key", "key", string(pubkey))
 				pubstringTObyte, _ := hexutil.Decode(string(pubkey))
-				pubxxx := crypto.ToECDSAPub(pubstringTObyte)
-
-
+				pub := crypto.ToECDSAPub(pubstringTObyte)
+				pubToAddr := crypto.PubkeyToAddress(*pub)
+				mainAddr := mainAccount[0].(common.Address)
+				log.Info("Get main account addr:", "mainAddr", common.AddressToUmAddress(mainAddr), "pubToAddr", common.AddressToUmAddress(pubToAddr) )
 				hashKeyString := hexutil.Encode(hashKey[:])
 				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
-				if err != nil {
+				if err != nil || pubToAddr != mainAddr {
 					verifiedData := core.VerifiedMain{
-						Addr: crypto.PubkeyToAddress(*pubxxx),
+						Addr: pubToAddr,
 						RegisterID: big.NewInt(mainID.Int64()),
 						Hashkey: common.HexToHash(hashKeyString),
 						Status: big.NewInt(4),
