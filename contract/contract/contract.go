@@ -130,7 +130,8 @@ func (crt *Contract) ContractTransaction(node *usedrpc.UseRPC, ks *keystore.KeyS
 		return "", err
 	}
 	//coinbaseUM := common.AddressToBase58Address(common.HexToAddress(coinbase)).String()
-	nonce, err := node.UseGetTransactionCount(coinbase, "pending")
+	xAddr := common.UmAddressToAddress(coinbase)
+	nonce, err := node.UseGetTransactionCount(common.ToHex(xAddr[:]), "pending")
 	if err != nil {
 		log.Error("Get nonce failed", "error", err)
 	}

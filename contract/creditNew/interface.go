@@ -143,6 +143,8 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				hashKeyString := hexutil.Encode(hashKey[:])
 				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
 				if err != nil || pubToAddr != mainAddr {
+					// random choose 2 committee to send this verifyHash transaction
+
 					verifiedData := core.VerifiedMain{
 						Addr: mainAddr,
 						RegisterID: big.NewInt(mainID.Int64()),
