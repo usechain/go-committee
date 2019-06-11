@@ -136,23 +136,26 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				}
 				log.Debug("Get public key", "key", string(pubkey))
 				pubstringTObyte, _ := hexutil.Decode(string(pubkey))
-				pubxxx := crypto.ToECDSAPub(pubstringTObyte)
-
-
+				pub := crypto.ToECDSAPub(pubstringTObyte)
+				pubToAddr := crypto.PubkeyToAddress(*pub)
+				mainAddr := mainAccount[0].(common.Address)
+				log.Info("Get main account addr:", "mainAddr", common.AddressToUmAddress(mainAddr), "pubToAddr", common.AddressToUmAddress(pubToAddr) )
 				hashKeyString := hexutil.Encode(hashKey[:])
 				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
-				if err != nil {
-					verifiedData := core.VerifiedMain{
-						Addr: crypto.PubkeyToAddress(*pubxxx),
-						RegisterID: big.NewInt(mainID.Int64()),
-						Hashkey: common.HexToHash(hashKeyString),
-						Status: big.NewInt(4),
-					}
+				if err != nil || pubToAddr != mainAddr {
+					// random choose 2 committee to send this verifyHash transaction
+					verifyFlag := GenerateRandomVerifier(usechain, max, addrIDstring)
+					if verifyFlag {
+						verifiedData := core.VerifiedMain{
+							Addr: mainAddr,
+							RegisterID: big.NewInt(mainID.Int64()),
+							Hashkey: common.HexToHash(hashKeyString),
+							Status: big.NewInt(4),
+						}
 
-					//Confirm stat with the contract
-					pool.AddVerifiedMain(verifiedData)
-					
-					log.Error("CheckUserRegisterCert failed", "err", err)
+						//Confirm stat with the contract
+						pool.AddVerifiedMain(verifiedData)
+					}
 					return
 				}
 
@@ -354,6 +357,16 @@ func ConfirmSubAccount(usechain *config.Usechain, sub core.VerifiedSub) error {
 		return nil
 	}
 	return nil
+}
+
+func GenerateRandomVerifier( usechain *config.Usechain, max int, addrID string) bool  {
+	idset := verify.AccountVerifier(addrID, max)
+	for _, id := range idset {
+		if id == usechain.UserProfile.CommitteeID {
+			return true
+		}
+	}
+	return false
 }
 
 func sendPublickeyShared(usechain *config.Usechain, nodelist []string, A string, max int, addrID string) ([]int){
