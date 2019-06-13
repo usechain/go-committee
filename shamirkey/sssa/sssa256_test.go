@@ -159,25 +159,25 @@ func TestClient(t *testing.T) {
 
 const CommitteeKey = "0x04b8f04cc7fdfce5eed37983f43cd5ac8ef7efd56d6e6ed218b3f534d86f2489794d7060d39a583608247016306870abd2b23a808212ba9cfd675f1b0a09b4b02f"
 
-func TestABGenerate(t *testing.T) {
-	mainPriv, err := crypto.GenerateKey()
-	if err != nil {
-		fmt.Println("key generate failed, err:", err)
-		return
-	}
-
-	sPriv, err := crypto.GenerateKey()
-	if err != nil {
-		fmt.Println("key generate failed, err:", err)
-		return
-	}
-
-	B := crypto.ToECDSAPub(common.FromHex(CommitteeKey))
-	_, a1, _, _ :=crypto.GenerteABPrivateKey(mainPriv, sPriv, hexutil.Encode(B.X.Bytes()), hexutil.Encode(B.Y.Bytes()), hexutil.Encode(sPriv.PublicKey.X.Bytes()), hexutil.Encode(sPriv.PublicKey.Y.Bytes()))
-	a2 := generatePrivKey(a1.D)
-
-	fmt.Println("a2", a2)
-}
+//func TestABGenerate(t *testing.T) {
+//	mainPriv, err := crypto.GenerateKey()
+//	if err != nil {
+//		fmt.Println("key generate failed, err:", err)
+//		return
+//	}
+//
+//	sPriv, err := crypto.GenerateKey()
+//	if err != nil {
+//		fmt.Println("key generate failed, err:", err)
+//		return
+//	}
+//
+//	B := crypto.ToECDSAPub(common.FromHex(CommitteeKey))
+//	_, a1, _, _ :=crypto.GenerteABPrivateKey(mainPriv, sPriv, hexutil.Encode(B.X.Bytes()), hexutil.Encode(B.Y.Bytes()), hexutil.Encode(sPriv.PublicKey.X.Bytes()), hexutil.Encode(sPriv.PublicKey.Y.Bytes()))
+//	a2 := generatePrivKey(a1.D)
+//
+//	fmt.Println("a2", a2)
+//}
 
 func TestPubCombine(t *testing.T) {
 	pubs := []string{
@@ -197,9 +197,12 @@ func TestPubCombine(t *testing.T) {
 }
 
 func TestSecretCombine(t *testing.T) {
-	shares := []string{"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE=mZfEnYvTuEejlN5z_4JZz1TyXFOAzq8NEmqsttA_y7Y=",
-		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI=cvNINT0A67rlVoAyyfp59syyp8ivwIVKiudR2lDlSms=",
-		//"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM=TE7LzO4uHy4nGCHxlHKaHkRy8z3esluIA2P2_dGKySA=",
+	shares := []string{
+	"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM=zfiTRydtyZHgYr2wZhGpwhH0MWifqAjIBOWZMYI52wQ=",
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU=VfoDXGkci__rLJVRZbenIzyXKfgQck9aQFUXURJVWy4=",
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAQ=8NnQXRGrL46NIVlMRZjBacuKL-DLKqeKG23-Npb_s0c=",
+		//"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM=evRA8c6rGxF6zhRsMF3safL0N6IpLsKOLEe3XL7iF0k=",
+		//"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI=dyi65iaJ6syKKrLoriIaR_h1XvRjpeGiBSFzGdt8ku4=",
 	}
 	combined, err := Combine256Bit(shares)
 	if err != nil {
