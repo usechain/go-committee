@@ -108,7 +108,6 @@ func ShamirKeySharesGenerate(id int, keypool *core.KeyPool) {
 		log.Error("Fatal: combining: ", err)
 		return
 	}
-
 	polyPublicKeys := sssa.ToECDSAPubArray(polynomials)
 
 	if !sssa.VerifyCreatedAndPolynomial(created, polyPublicKeys) {
@@ -126,6 +125,7 @@ func ShamirKeySharesGenerate(id int, keypool *core.KeyPool) {
 	for i:= range core.CommitteeNodeList {
 		m = msg.PackKeyPointShare(created[i], id)
 		wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(core.CommitteeNodeList[i])))
+		log.Debug("send share", "id", i, "created",created[i])
 		keypool.InsertKeyCache(string(m))
 	}
 }
@@ -145,7 +145,7 @@ func SendRequestShares(senderid int) {
 }
 
 // Listening the network msg
-func ShamirKeySharesListening(usechain *config.Usechain, pool *core.SharePool, keypool *core.KeyPool) {
+func ShamirKeySharesListening(p *config.CommittteeProfile, pool *core.SharePool, keypool *core.KeyPool) {
 	log.Debug("Listening...")
 	var input []byte
 
@@ -163,7 +163,7 @@ func ShamirKeySharesListening(usechain *config.Usechain, pool *core.SharePool, k
 			log.Debug("Received polynomial shares")
 			keypool.InsertPolynomialShare(m.Sender, msg.UnpackPolynomialShare(m.Data))
 		case msg.Keyshare:
-			log.Debug("Received key shares")
+			log.Debug("Received key shares", "id", m.Sender, "share", string(m.Data[0]))
 			keypool.InsertPrivateKeyShare(m.Sender, string(m.Data[0]))
 		case msg.NewCommitteeLogInMsg:
 			log.Debug("Detected a new logged in committee")
@@ -171,14 +171,14 @@ func ShamirKeySharesListening(usechain *config.Usechain, pool *core.SharePool, k
 		case msg.VerifyShareMsg:
 			addrID, bsA := msg.UnpackVerifyShare(m.Data)
 			log.Debug("Received a new shared for account verifying", "A", addrID)
-			if verify.IsAccountVerifier(addrID, core.CommitteeMax, usechain.UserProfile.CommitteeID) {
+			if verify.IsAccountVerifier(addrID, core.CommitteeMax, p.CommitteeID) {
 				pool.SaveAccountSharedCache(addrID, bsA, m.Sender)
 			}
 		case msg.VerifySubASMsg:
 			A1, S1 := msg.UnpackVerifyShare(m.Data)
 			log.Debug("Received a new AS for sub account verifying", "S", S1)
 			log.Info("Send committee to verify subaccount", "Sub-S1", S1, "committeeID", m.Sender)
-			creditNew.SendSubShared(usechain, core.CommitteeNodeList[m.Sender], A1, S1)
+			creditNew.SendSubShared(p, core.CommitteeNodeList[m.Sender], A1, S1)
 		case msg.VerifySubShareMsg:
 			addrID, bsA := msg.UnpackVerifyShare(m.Data)
 			log.Debug("Received a new shared for account verifying", "S", addrID)

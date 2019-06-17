@@ -83,7 +83,7 @@ func Initial() {
 func run() {
 	// Listening the network msg
 	go func(){
-		shamirkey.ShamirKeySharesListening(&GlobalConfig, cache, keypool)
+		shamirkey.ShamirKeySharesListening(GlobalConfig.UserProfile, cache, keypool)
 	}()
 
 	// Process handle
@@ -114,6 +114,14 @@ func run() {
 
 		case config.KeyGenerating:
 			log.Warn("KeyGenerating")
+			id, err := manager.GetSelfCommitteeID(GlobalConfig)
+			if err != nil || id == -1{
+				log.Error("Get CommitteeID failed", "err", err)
+			}
+			log.Info("My committee ID", "id", id)
+			GlobalConfig.UserProfile.CommitteeID = id
+			config.UpdateProfile(GlobalConfig.UserProfile)
+
 			//Read from contract to update certid, upload asym key, and download all committee certID and asym key
 			shamirkey.InitShamirCommitteeNumber(GlobalConfig)
 
