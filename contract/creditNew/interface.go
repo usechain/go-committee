@@ -407,8 +407,8 @@ func SendSubPublickey(usechain *config.Usechain, nodelist []string, A string, S 
 	}
 }
 
-func SendSubShared(usechain *config.Usechain, node, A string,S string) {
-	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
+func SendSubShared(p *config.CommittteeProfile, node, A string,S string) {
+	priv := sssa.ExtractPrivateShare(p.PrivShares)	//bs
 	if priv == nil {
 		log.Error("No valid private share")
 		return
@@ -419,7 +419,7 @@ func SendSubShared(usechain *config.Usechain, node, A string,S string) {
 	pubkey.X, pubkey.Y = crypto.S256().ScalarMult(publicA.X, publicA.Y, priv.D.Bytes())   //bsA=[bs]B
 	pubkey.Curve = crypto.S256()
 
-	m := msg.PackVerifySubShare(S, pubkey, usechain.UserProfile.CommitteeID)
+	m := msg.PackVerifySubShare(S, pubkey, p.CommitteeID)
 	wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(node)))
 }
 

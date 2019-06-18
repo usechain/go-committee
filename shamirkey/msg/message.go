@@ -17,7 +17,6 @@
 package msg
 
 import (
-	"fmt"
 	"time"
 	"math/big"
 	"encoding/json"
@@ -66,7 +65,6 @@ func UnpackMsg(b []byte) (*Msg, error) {
 func PackPolynomialShare(polys []*ecdsa.PublicKey, id int) []byte{
 	d := make([][]byte, len(polys))
 	for i := range polys {
-		fmt.Println("public key", polys[i])
 		d[i] = crypto.FromECDSAPub(polys[i])
 	}
 
@@ -87,7 +85,6 @@ func UnpackPolynomialShare(datas [][]byte) []*ecdsa.PublicKey {
 
 	for i := range datas {
 		p[i] = crypto.ToECDSAPub(datas[i])
-		fmt.Println("receive", *p[i])
 	}
 	return p
 }
