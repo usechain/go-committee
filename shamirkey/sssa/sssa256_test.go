@@ -159,25 +159,25 @@ func TestClient(t *testing.T) {
 
 const CommitteeKey = "0x04b8f04cc7fdfce5eed37983f43cd5ac8ef7efd56d6e6ed218b3f534d86f2489794d7060d39a583608247016306870abd2b23a808212ba9cfd675f1b0a09b4b02f"
 
-func TestABGenerate(t *testing.T) {
-	mainPriv, err := crypto.GenerateKey()
-	if err != nil {
-		fmt.Println("key generate failed, err:", err)
-		return
-	}
-
-	sPriv, err := crypto.GenerateKey()
-	if err != nil {
-		fmt.Println("key generate failed, err:", err)
-		return
-	}
-
-	B := crypto.ToECDSAPub(common.FromHex(CommitteeKey))
-	_, a1, _, _ :=crypto.GenerteABPrivateKey(mainPriv, sPriv, hexutil.Encode(B.X.Bytes()), hexutil.Encode(B.Y.Bytes()), hexutil.Encode(sPriv.PublicKey.X.Bytes()), hexutil.Encode(sPriv.PublicKey.Y.Bytes()))
-	a2 := generatePrivKey(a1.D)
-
-	fmt.Println("a2", a2)
-}
+//func TestABGenerate(t *testing.T) {
+//	mainPriv, err := crypto.GenerateKey()
+//	if err != nil {
+//		fmt.Println("key generate failed, err:", err)
+//		return
+//	}
+//
+//	sPriv, err := crypto.GenerateKey()
+//	if err != nil {
+//		fmt.Println("key generate failed, err:", err)
+//		return
+//	}
+//
+//	B := crypto.ToECDSAPub(common.FromHex(CommitteeKey))
+//	_, a1, _, _ :=crypto.GenerteABPrivateKey(mainPriv, sPriv, hexutil.Encode(B.X.Bytes()), hexutil.Encode(B.Y.Bytes()), hexutil.Encode(sPriv.PublicKey.X.Bytes()), hexutil.Encode(sPriv.PublicKey.Y.Bytes()))
+//	a2 := generatePrivKey(a1.D)
+//
+//	fmt.Println("a2", a2)
+//}
 
 func TestPubCombine(t *testing.T) {
 	pubs := []string{
@@ -197,16 +197,18 @@ func TestPubCombine(t *testing.T) {
 }
 
 func TestSecretCombine(t *testing.T) {
-	shares := []string{"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE=mZfEnYvTuEejlN5z_4JZz1TyXFOAzq8NEmqsttA_y7Y=",
-		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI=cvNINT0A67rlVoAyyfp59syyp8ivwIVKiudR2lDlSms=",
-		//"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAM=TE7LzO4uHy4nGCHxlHKaHkRy8z3esluIA2P2_dGKySA=",
+	shares := []string{
+	"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAE=wSoLC_rR9JLFnSxPgOfa9HmT89P8JgKONQSIV5vCIkg=",
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI=wxyb-6LJqoqwN4Q3QPTjmfTbSwvWKtRPw2TmkrhExbc=",
+		"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAU=gsCFQ2F3t30HEH2B_CXFMYmm3R2sm3R2frf6YkCePrA=",
+		//"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI=CsUVRyqZIdtbHKNxm7rtmPsU7nrXjAcigse7hv9M1Jk=",
+		//"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAI=dyi65iaJ6syKKrLoriIaR_h1XvRjpeGiBSFzGdt8ku4=",
 	}
 	combined, err := Combine256Bit(shares)
 	if err != nil {
 		fmt.Println("Fatal: combining: ", err)
 	}
 	fmt.Println("The combined string:", combined)
-
 
 	pub := generatePrivKey(combined).PublicKey
 	fmt.Println(pub)

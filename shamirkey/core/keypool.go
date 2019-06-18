@@ -94,6 +94,7 @@ func (self *KeyPool) ShamirKeyShareCheck(usechain *config.Usechain) {
 
 	id := usechain.UserProfile.CommitteeID
 	priv := sssa.GenerateSssaKey(self.keySet)
+	log.Debug("keyset===========", "keyset", self.keySet)
 	res := utils.ToBase64(big.NewInt(int64(point(id))))
 	res += utils.ToBase64(priv)
 
@@ -104,7 +105,7 @@ func (self *KeyPool) ShamirKeyShareCheck(usechain *config.Usechain) {
 	p, _ := config.ReadProfile()
 	p.PrivShares = res
 	config.UpdateProfile(p)
-	log.Warn("key shares generated", "key", res)
+	log.Warn("key shares generated", "id" , id, "key", res)
 
 	//Upload committee key
 	pubkey := sssa.GenerateCommitteePublicKey(self.polySet)
