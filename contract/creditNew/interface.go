@@ -25,6 +25,7 @@ import (
 	"github.com/usechain/go-usechain/node"
 	"strconv"
 	"encoding/hex"
+	"errors"
 )
 
 //The struct of the identity
@@ -47,7 +48,6 @@ type Issuer struct {
 	Cdate  string      `json:"cdate"`
 	Edate  string      `json:"edate"`
 }
-
 
 func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, nodelist []string, max int) {
 	rpc := usechain.NodeRPC
@@ -139,10 +139,14 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				pub := crypto.ToECDSAPub(pubstringTObyte)
 				pubToAddr := crypto.PubkeyToAddress(*pub)
 				mainAddr := mainAccount[0].(common.Address)
-				log.Info("Get main account addr:", "mainAddr", common.AddressToUmAddress(mainAddr), "pubToAddr", common.AddressToUmAddress(pubToAddr) )
 				hashKeyString := hexutil.Encode(hashKey[:])
 				err = CheckUserRegisterCert([]byte(issuerVerify.Cert), hashKeyString, id.Fpr)
 				if err != nil || pubToAddr != mainAddr {
+					if err != nil {
+						log.Error("check certificate error")
+					} else {
+						log.Error("pubToAddr not right:", "mainAddr", common.AddressToUmAddress(mainAddr), "pubToAddr", common.AddressToUmAddress(pubToAddr) )
+					}
 					// random choose 2 committee to send this verifyHash transaction
 					verifyFlag := GenerateRandomVerifier(usechain, max, addrIDstring)
 					if verifyFlag {
@@ -152,7 +156,6 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 							Hashkey: common.HexToHash(hashKeyString),
 							Status: big.NewInt(4),
 						}
-
 						//Confirm stat with the contract
 						pool.AddVerifiedMain(verifiedData)
 					}
@@ -160,6 +163,7 @@ func ScanCreditSystemAccount(usechain *config.Usechain, pool *core.SharePool, no
 				}
 
 				decrypedAndVerifyData := strings.Join([]string{hashKeyString, id.Data, string(pubkey)},"+")
+				log.Debug("id.Data", "data", id.Data)
 				sendIdSet := sendPublickeyShared(usechain, nodelist, string(pubkey), max, addrIDstring)
 				for _, id := range sendIdSet {
 					if  id == usechain.UserProfile.CommitteeID {
@@ -403,8 +407,8 @@ func SendSubPublickey(usechain *config.Usechain, nodelist []string, A string, S 
 	}
 }
 
-func SendSubShared(usechain *config.Usechain, node, A string,S string) {
-	priv := sssa.ExtractPrivateShare(usechain.UserProfile.PrivShares)	//bs
+func SendSubShared(p *config.CommittteeProfile, node, A string,S string) {
+	priv := sssa.ExtractPrivateShare(p.PrivShares)	//bs
 	if priv == nil {
 		log.Error("No valid private share")
 		return
@@ -415,7 +419,7 @@ func SendSubShared(usechain *config.Usechain, node, A string,S string) {
 	pubkey.X, pubkey.Y = crypto.S256().ScalarMult(publicA.X, publicA.Y, priv.D.Bytes())   //bsA=[bs]B
 	pubkey.Curve = crypto.S256()
 
-	m := msg.PackVerifySubShare(S, pubkey, usechain.UserProfile.CommitteeID)
+	m := msg.PackVerifySubShare(S, pubkey, p.CommitteeID)
 	wnode.SendMsg(m, crypto.ToECDSAPub(common.FromHex(node)))
 }
 
@@ -436,7 +440,7 @@ func CheckUserRegisterCert(cert []byte, idhex string, fpr string) error {
 
 	subject := parsed.Subject.String()
 	if !strings.Contains(subject, idhex) || !strings.Contains(subject, fpr) {
-		log.Error("Not the right cert of this user")
+		err = errors.New("Not the right cert of this user")
 		return err
 	}
 
