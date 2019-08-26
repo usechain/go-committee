@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"reflect"
 	"math/big"
+	"time"
 	"github.com/usechain/go-usechain/crypto"
 	"github.com/usechain/go-usechain/common"
 	"github.com/usechain/go-usechain/log"
@@ -192,6 +193,7 @@ func AccountVerifyProcess(usechain *config.Usechain, pool *core.SharePool) {
 	go func() {
 		for {
 			pool.CheckSharedMsg(usechain, core.CommitteeRequires)
+			time.Sleep(time.Millisecond*100)
 		}
 	}()
 
